@@ -1,0 +1,2449 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>O Macaquinho Brincalhão</title>
+
+    <!--
+    ╔══════════════════════════════════════════════════════════════════╗
+    ║  CONFIGURAÇÃO DO FIREBASE — COLE AQUI OS SEUS VALORES            ║
+    ║  (Consola Firebase → Definições do projeto → As suas apps → </>) ║
+    ║  Enquanto aqui estiver "COLE_AQUI", o jogo funciona em MODO      ║
+    ║  LOCAL (dados só neste dispositivo, login de teste).             ║
+    ║  Depois de colar os valores, passa a guardar tudo online.        ║
+    ║  Não se esqueça: o seu UID também vai nas regras do Firestore    ║
+    ║  (ficheiro firestore.rules).                                     ║
+    ╚══════════════════════════════════════════════════════════════════╝
+    -->
+    <script>
+        window.FIREBASE_CONFIG = {
+            apiKey: "AIzaSyAifRgkug2GxyxwRUmNg33wy8k-Dmv2pTc",
+            authDomain: "macaquinho-terapia.firebaseapp.com",
+            projectId: "macaquinho-terapia",
+            storageBucket: "macaquinho-terapia.firebasestorage.app",
+            messagingSenderId: "557930493075",
+            appId: "1:557930493075:web:7dbe0462b517c792fb4966"
+        };
+    </script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;800;900&display=swap" rel="stylesheet">
+
+    <style>
+        /* ================= BASE ================= */
+        * { box-sizing: border-box; }
+
+        body {
+            font-family: 'Nunito', sans-serif;
+            background: radial-gradient(circle, #dcedc8 0%, #aed581 100%) fixed;
+            margin: 0;
+            min-height: 100vh;
+            padding: 16px;
+            overflow-x: hidden;
+            color: #2c3e50;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        /* Cada "ecrã" da aplicação: só um está visível de cada vez */
+        .ecra { display: none; }
+        .ecra.ativo { display: block; }
+        .ecra-centrado.ativo {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: calc(100vh - 32px);
+        }
+
+        /* Cartão branco com borda verde (o visual original do jogo) */
+        .cartao {
+            background-color: #ffffff;
+            border-radius: 40px;
+            box-shadow: 0 15px 40px rgba(0,0,0,0.15);
+            padding: 30px;
+            max-width: 750px;
+            width: 100%;
+            margin: 0 auto;
+            position: relative;
+            border: 6px solid #8bc34a;
+            text-align: center;
+        }
+        .cartao.largo { max-width: 1100px; text-align: left; }
+
+        h1 {
+            color: #33691e;
+            font-size: 2.3em;
+            margin-top: 0;
+            margin-bottom: 10px;
+            font-weight: 900;
+        }
+        h2 { color: #33691e; font-weight: 900; margin: 0 0 12px; }
+        h3 { margin: 4px 0; color: #33691e; font-weight: 900; font-size: 1.2em; }
+
+        /* ================= BOTÕES ================= */
+        button { font-family: 'Nunito', sans-serif; }
+
+        button.main-btn {
+            background: linear-gradient(135deg, #ffca28 0%, #ff8f00 100%);
+            border: none;
+            border-bottom: 5px solid #e65100;
+            border-radius: 50px;
+            padding: 15px 45px;
+            font-size: 1.5em;
+            font-weight: 900;
+            color: #fff;
+            cursor: pointer;
+            box-shadow: 0 8px 20px rgba(255, 143, 0, 0.4);
+            transition: transform 0.1s;
+            text-transform: uppercase;
+            min-height: 64px;
+        }
+        button.main-btn:hover { transform: translateY(-2px); box-shadow: 0 10px 25px rgba(255, 143, 0, 0.5); }
+        button.main-btn:active { transform: translateY(3px); border-bottom: 1px solid #e65100; }
+
+        /* Botões genéricos — grandes, para dedos pequenos */
+        .btn {
+            min-height: 52px;
+            padding: 12px 22px;
+            border-radius: 18px;
+            border: none;
+            border-bottom: 4px solid rgba(0,0,0,0.2);
+            font-size: 1.1em;
+            font-weight: 800;
+            cursor: pointer;
+            color: #fff;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            transition: transform 0.1s;
+        }
+        .btn:active { transform: translateY(2px); border-bottom-width: 1px; }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-verde { background: #7cb342; }
+        .btn-laranja { background: #ff9800; }
+        .btn-vermelho { background: #e53935; }
+        .btn-azul { background: #039be5; }
+        .btn-branco { background: #fff; color: #33691e; border: 3px solid #c5e1a5; border-bottom-width: 5px; }
+        .btn-pequeno { min-height: 46px; padding: 8px 14px; font-size: 1em; border-radius: 14px; }
+        .btn-grande { min-height: 72px; font-size: 1.35em; width: 100%; border-radius: 24px; }
+
+        .btn-link {
+            background: none; border: none; color: #8d6e63; font-weight: 800;
+            font-size: 1em; cursor: pointer; padding: 12px; margin-top: 8px;
+        }
+
+        /* ================= FORMULÁRIOS ================= */
+        label { display: block; font-weight: 800; color: #33691e; margin: 14px 0 6px; }
+        input[type=text], input[type=email], input[type=password], input[type=search], input[type=date], select, textarea {
+            width: 100%;
+            font-family: 'Nunito', sans-serif;
+            font-size: 1.1em;          /* >= 16px evita o zoom automático no iPhone */
+            padding: 13px 16px;
+            border: 3px solid #c5e1a5;
+            border-radius: 16px;
+            background: #fbfff7;
+            color: #2c3e50;
+        }
+        textarea { min-height: 90px; resize: vertical; }
+        input:focus, select:focus, textarea:focus { outline: none; border-color: #7cb342; background: #fff; }
+        .caixa-check { display: flex; align-items: center; gap: 12px; font-weight: 800; margin: 16px 0; cursor: pointer; }
+        .caixa-check input { width: 28px; height: 28px; accent-color: #7cb342; }
+        .ajuda { font-size: 0.95em; color: #6d4c41; background: #fff8e1; border-radius: 14px; padding: 10px 14px; margin: 10px 0; }
+        .erro { color: #c62828; font-weight: 800; min-height: 1.4em; }
+        .linha-botoes { display: flex; flex-wrap: wrap; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+
+        /* ================= ECRÃ INICIAL ================= */
+        .menu-inicial { display: flex; flex-direction: column; gap: 14px; max-width: 420px; margin: 20px auto 0; }
+        .menu-inicial small { display: block; font-size: 0.7em; font-weight: 600; }
+
+        /* ================= ÁREA DO TERAPEUTA ================= */
+        .topo-admin { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 16px; }
+        .topo-admin h1 { margin: 0; font-size: 1.9em; }
+        .topo-admin .quem { color: #6d4c41; font-weight: 600; }
+
+        .separadores { display: flex; gap: 10px; margin-bottom: 20px; }
+        .separador {
+            flex: 1; min-height: 58px; border-radius: 20px; border: 3px solid #c5e1a5;
+            background: #f1f8e9; color: #33691e; font-size: 1.15em; font-weight: 900; cursor: pointer;
+        }
+        .separador.ativo { background: #7cb342; border-color: #7cb342; color: #fff; }
+        .painel { display: none; }
+        .painel.ativo { display: block; }
+
+        .barra-ferramentas { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 12px; }
+        .barra-ferramentas input[type=search] { flex: 1 1 240px; }
+
+        .chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0 14px; }
+        .chip {
+            min-height: 44px; padding: 6px 14px; border-radius: 999px; border: 2px solid #c5e1a5;
+            background: #fff; font-weight: 800; font-size: 0.98em; cursor: pointer; color: #33691e;
+        }
+        .chip.ativo { background: #33691e; color: #fff; border-color: #33691e; }
+        .contador { color: #6d4c41; font-weight: 800; margin: 0 0 12px; }
+
+        .grelha { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(250px, 100%), 1fr)); gap: 16px; }
+
+        .ex-cartao, .pac-cartao {
+            border: 3px solid #e8f5e9; border-radius: 24px; padding: 14px; background: #fbfff7;
+            display: flex; flex-direction: column; gap: 8px;
+        }
+        .ex-cartao .mini { width: 96px; height: 96px; margin: 0 auto; }
+        .ex-historia { margin: 0; font-size: 0.98em; color: #455a64; }
+        .ex-cartao details { font-size: 0.95em; color: #e65100; }
+        .ex-cartao summary { cursor: pointer; font-weight: 800; padding: 6px 0; }
+        .ex-acoes { display: flex; flex-wrap: wrap; gap: 8px; margin-top: auto; }
+        .ex-acoes .btn { flex: 1 1 auto; }
+
+        .etiquetas { display: flex; flex-wrap: wrap; gap: 6px; }
+        .badge { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 0.85em; font-weight: 800; }
+        .badge-tempo { background: #fffde7; color: #f57f17; }
+        .badge-meu { background: #e1f5fe; color: #0277bd; }
+
+        .pac-cartao { align-items: center; text-align: center; }
+        .pac-cartao .ex-acoes > :nth-child(-n+2) { flex-basis: 100%; }
+        .pac-avatar { font-size: 3em; line-height: 1; }
+        .pac-nome { font-size: 1.4em; font-weight: 900; color: #33691e; }
+        .pac-codigo {
+            font-family: monospace; font-size: 1.5em; font-weight: 900; letter-spacing: 2px;
+            background: #fff3e0; color: #e65100; padding: 6px 14px; border-radius: 12px; border: 2px dashed #ffb74d;
+        }
+        .vazio { text-align: center; color: #8d6e63; font-weight: 800; padding: 30px 10px; grid-column: 1 / -1; }
+
+        /* ================= JANELAS (DIÁLOGOS) ================= */
+        dialog {
+            border: none; border-radius: 30px; padding: 0;
+            width: calc(100% - 24px); max-width: 620px; max-height: 92vh;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.3);
+        }
+        dialog::backdrop { background: rgba(51, 105, 30, 0.45); }
+        .dialogo-corpo { padding: 24px; }
+        .previa-expressao { display: flex; align-items: center; gap: 14px; }
+        .previa-expressao .mini { width: 110px; height: 110px; flex: none; }
+        .previa-expressao select { flex: 1; }
+
+        /* Aviso temporário (toast) */
+        #aviso {
+            position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%) translateY(150%);
+            background: #33691e; color: #fff; font-weight: 800; padding: 14px 22px; border-radius: 20px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.25); transition: transform 0.3s, visibility 0.3s; z-index: 50;
+            max-width: calc(100% - 32px); text-align: center; visibility: hidden;
+        }
+        #aviso.visivel { transform: translateX(-50%) translateY(0); visibility: visible; }
+
+        /* ================= JOGO ================= */
+        #progress-bar {
+            width: 80%; height: 18px; background-color: #eee; border-radius: 20px;
+            margin: 0 auto 20px auto; overflow: hidden; border: 3px solid #c5e1a5;
+        }
+        #progress {
+            height: 100%; background: linear-gradient(to right, #8bc34a, #558b2f);
+            width: 0%; transition: width 0.5s ease-in-out;
+        }
+        .btn-sair-jogo {
+            position: absolute; top: 14px; left: 14px; width: 52px; height: 52px; border-radius: 50%;
+            border: 3px solid #c5e1a5; background: #fff; color: #8d6e63; font-size: 1.4em; font-weight: 900; cursor: pointer;
+        }
+        .titulo-ex { font-weight: 900; color: #8d6e63; margin: 0; min-height: 1.4em; }
+
+        .character-stage { display: flex; justify-content: center; align-items: center; margin: 10px 0; min-height: 220px; }
+        .sprite { position: relative; width: 180px; height: 180px; transition: transform 0.3s ease; }
+        .bounce { animation: playfulBounce 2.5s infinite ease-in-out; }
+        @keyframes playfulBounce {
+            0%, 100% { transform: translateY(0) scale(1); }
+            50% { transform: translateY(-15px) scale(1.05); }
+        }
+
+        .story-text, .instruction-text { transition: opacity 0.2s; }
+        .story-text { font-size: 1.3em; color: #2c3e50; margin: 10px 0; font-weight: 800; line-height: 1.4; padding: 0 10px; }
+        .instruction-text {
+            font-size: 1.1em; color: #e65100; font-weight: bold; margin-bottom: 15px; background-color: #fff3e0;
+            padding: 10px 15px; border-radius: 15px; border-left: 5px solid #ff9800;
+        }
+
+        #timer-container {
+            display: none; background: #fffde7; border: 3px dashed #fbc02d; border-radius: 20px; padding: 15px;
+            margin: 10px auto 25px auto; width: 80%; justify-content: center; align-items: center; flex-direction: column; gap: 10px;
+        }
+        #time-display { font-size: 2.5em; font-family: monospace; font-weight: 900; color: #d84315; margin: 0; text-shadow: 1px 1px #ffcc80; }
+        .timer-controls { display: flex; gap: 15px; flex-wrap: wrap; justify-content: center; }
+        .timer-btn {
+            padding: 8px 20px; min-height: 52px; font-size: 1.2em; font-weight: bold; border-radius: 10px;
+            cursor: pointer; border: none; box-shadow: 0 4px 6px rgba(0,0,0,0.1); color: white;
+        }
+        .timer-toggle { background-color: #4caf50; }
+        .timer-reset { background-color: #f44336; }
+
+        .celebration-element {
+            position: absolute; font-size: 35px; pointer-events: none;
+            animation: popAndFly 1.2s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+        }
+        @keyframes popAndFly {
+            0% { opacity: 0; transform: translate(0, 0) scale(0.5) rotate(0deg); }
+            15% { opacity: 1; }
+            100% { opacity: 0; transform: translate(var(--x), var(--y)) scale(1.4) rotate(var(--r)); }
+        }
+
+        /* ================= ANIMAÇÕES DO MACACO (SVG) ================= */
+        .macaco { width: 100%; height: 100%; display: block; overflow: visible; }
+
+        /* Expressões com duas fases (ex.: sorriso ↔ beijinho) alternam entre si */
+        .macaco .alterna.fase-0 { animation: faseA var(--vel, 1.6s) infinite step-end; }
+        .macaco .alterna.fase-1 { animation: faseB var(--vel, 1.6s) infinite step-end; }
+        @keyframes faseA { 0% { opacity: 1; } 50% { opacity: 0; } 100% { opacity: 1; } }
+        @keyframes faseB { 0% { opacity: 0; } 50% { opacity: 1; } 100% { opacity: 0; } }
+
+        /* Movimentos da boca, da língua e da cabeça */
+        .boca-grupo { transform-box: fill-box; transform-origin: center; }
+        .lingua { transform-box: fill-box; transform-origin: 50% 0%; }
+        .cabeca { transform-box: view-box; transform-origin: 50px 55px; }
+        .mov-vibrar .boca-grupo { animation: vibrar 0.12s infinite alternate; }
+        .mov-lados .boca-grupo { animation: lados 1.8s infinite ease-in-out alternate; }
+        .mov-frente .boca-grupo { animation: frente 1.6s infinite ease-in-out alternate; }
+        .mov-roda .lingua { animation: roda 1.4s infinite ease-in-out alternate; }
+        .mov-respirar .cabeca { animation: respirar 3.2s infinite ease-in-out; }
+        .mov-abanar .cabeca { animation: abanar 3.5s infinite ease-in-out alternate; }
+        @keyframes vibrar { from { transform: translateX(-0.7px); } to { transform: translateX(0.7px); } }
+        @keyframes lados { from { transform: translateX(-5px); } to { transform: translateX(5px); } }
+        @keyframes frente { from { transform: translateY(0) scaleX(1); } to { transform: translateY(3px) scaleX(1.1); } }
+        @keyframes roda { from { transform: rotate(-35deg); } to { transform: rotate(35deg); } }
+        @keyframes respirar { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.06); } }
+        @keyframes abanar { from { transform: rotate(-10deg); } to { transform: rotate(10deg); } }
+
+        /* Pormenores: chama da vela, ar a sair, coisas a flutuar */
+        .chama { transform-box: fill-box; transform-origin: 50% 100%; animation: chama 0.35s infinite alternate; }
+        .ar { animation: ar 1.2s infinite; }
+        .flutua { animation: flutua 2.2s infinite ease-in-out alternate; }
+        @keyframes chama { from { transform: scale(1, 1) skewX(-4deg); } to { transform: scale(0.85, 1.15) skewX(4deg); } }
+        @keyframes ar { 0% { opacity: 0.15; transform: translateX(-2px); } 60% { opacity: 1; } 100% { opacity: 0.15; transform: translateX(3px); } }
+        @keyframes flutua { from { transform: translateY(0); } to { transform: translateY(-4px); } }
+
+        @media (prefers-reduced-motion: reduce) {
+            .bounce, .boca-grupo, .lingua, .cabeca, .chama, .ar, .flutua { animation-duration: 6s !important; }
+        }
+
+        /* ================= ATRIBUIÇÃO DE EXERCÍCIOS ================= */
+        .dlg-largo { max-width: 780px; }
+        .linha-datas { display: flex; gap: 12px; flex-wrap: wrap; }
+        .linha-datas label { flex: 1 1 160px; margin-top: 6px; }
+        .lista-atribuir {
+            display: flex; flex-direction: column; gap: 6px; max-height: 45vh; overflow-y: auto;
+            padding: 6px; border: 3px solid #e8f5e9; border-radius: 18px;
+        }
+        .linha-ex {
+            display: flex; align-items: center; gap: 12px; min-height: 64px; padding: 6px 12px; margin: 0;
+            border-radius: 14px; background: #fbfff7; cursor: pointer; font-weight: 600; color: #2c3e50;
+        }
+        .linha-ex:has(input:checked) { background: #dcedc8; }
+        .linha-ex input { width: 28px; height: 28px; accent-color: #7cb342; flex: none; }
+        .linha-ex .mini { width: 52px; height: 52px; flex: none; }
+        .linha-ex small { display: block; color: #6d4c41; }
+        .cat-titulo { font-weight: 900; color: #33691e; margin: 10px 4px 0; }
+        .modo-dados {
+            display: inline-block; font-size: 0.9em; font-weight: 800; padding: 4px 12px;
+            border-radius: 999px; background: #e1f5fe; color: #0277bd; margin-top: 4px;
+        }
+
+        /* ================= MODO PACIENTE ================= */
+        .codigo-input {
+            text-align: center; font-family: monospace !important; font-size: 1.8em !important;
+            letter-spacing: 3px; text-transform: uppercase; margin-bottom: 6px;
+        }
+        .grelha-crianca { grid-template-columns: repeat(auto-fill, minmax(min(200px, 100%), 1fr)); margin-top: 20px; }
+        .ex-crianca {
+            position: relative; border: 4px solid #c5e1a5; border-radius: 28px; background: #fbfff7; padding: 14px;
+            cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 6px; min-height: 180px;
+            font-family: 'Nunito', sans-serif; font-size: 1.15em; font-weight: 900; color: #33691e;
+        }
+        .ex-crianca:active { transform: scale(0.97); }
+        .ex-crianca .mini { display: block; width: 110px; height: 110px; }
+        .ex-crianca.feito { border-color: #7cb342; background: #f1f8e9; }
+        .ex-crianca .visto { position: absolute; top: 8px; right: 12px; font-size: 1.6em; }
+        .estado-ligacao { font-weight: 800; color: #6d4c41; text-align: center; }
+
+        /* ================= STICKERS E PROGRESSO DA CRIANÇA ================= */
+        .barra-grande {
+            height: 30px; background: #eee; border-radius: 20px; overflow: hidden;
+            border: 4px solid #c5e1a5; margin: 6px auto 4px; max-width: 520px;
+        }
+        .barra-grande > div {
+            height: 100%; width: 0%; background: linear-gradient(to right, #ffca28, #8bc34a);
+            transition: width 0.6s ease-in-out;
+        }
+        .barra-texto { text-align: center; font-weight: 900; color: #33691e; margin: 0 0 14px; }
+        .titulo-colecao { text-align: center; margin-top: 30px; }
+        .colecao { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
+        .sticker {
+            width: 66px; height: 66px; border-radius: 50%; display: grid; place-items: center;
+            font-size: 2.3em; background: #fffde7; border: 3px dashed #ffd54f;
+        }
+        .sticker.novo { animation: stickerNovo 0.8s ease-out; border-style: solid; border-color: #ffb300; }
+        @keyframes stickerNovo { 0% { transform: scale(0.2) rotate(-90deg); } 70% { transform: scale(1.25) rotate(10deg); } 100% { transform: scale(1); } }
+
+        /* Prémio que aparece no jogo ao concluir um exercício */
+        .premio {
+            position: absolute; left: 50%; top: 35%; z-index: 5; pointer-events: none;
+            display: flex; flex-direction: column; align-items: center; gap: 4px;
+            background: #fff; border: 5px solid #ffd54f; border-radius: 30px; padding: 16px 26px;
+            box-shadow: 0 12px 30px rgba(0,0,0,0.2); color: #e65100; font-size: 1.2em; font-weight: 900;
+            transform: translate(-50%, -50%); opacity: 0;
+        }
+        .premio.mostrar { animation: premioPop 1.8s ease-out forwards; }
+        .premio span { font-size: 3.5em; line-height: 1; }
+        @keyframes premioPop {
+            0% { opacity: 0; transform: translate(-50%, -50%) scale(0.3); }
+            15% { opacity: 1; transform: translate(-50%, -50%) scale(1.1); }
+            25% { transform: translate(-50%, -50%) scale(1); }
+            80% { opacity: 1; }
+            100% { opacity: 0; transform: translate(-50%, -60%) scale(1); }
+        }
+
+        /* ================= PAINEL DE PROGRESSO (TERAPEUTA) ================= */
+        .resumo-grelha { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(160px, 100%), 1fr)); gap: 12px; margin: 14px 0 24px; }
+        .tile { background: #f1f8e9; border-radius: 20px; padding: 14px; text-align: center; color: #6d4c41; font-weight: 800; }
+        .tile b { display: block; font-size: 1.9em; color: #33691e; font-weight: 900; }
+        .seccao-progresso { margin-top: 26px; }
+        .semana-linha {
+            display: grid; grid-template-columns: minmax(120px, 190px) 1fr auto; gap: 12px; align-items: center;
+            padding: 8px 4px; border-bottom: 2px solid #f1f8e9; font-weight: 800;
+        }
+        .semana-linha .barra-grande { height: 18px; border-width: 2px; margin: 0; max-width: none; }
+        .tabela-scroll { overflow-x: auto; }
+        table.tabela { width: 100%; border-collapse: collapse; min-width: 520px; }
+        .tabela th, .tabela td { padding: 10px 8px; border-bottom: 2px solid #e8f5e9; text-align: left; vertical-align: top; }
+        .tabela th { color: #33691e; font-weight: 900; background: #f9fbe7; }
+        .tabela td.num { text-align: center; }
+
+        /* Impressão / PDF: só o painel de progresso, sem botões */
+        @media print {
+            body { background: #fff !important; padding: 0; }
+            .ecra:not(#ecra-progresso), .sem-imprimir, #aviso, dialog { display: none !important; }
+            #ecra-progresso { display: block !important; }
+            .cartao { border: none; box-shadow: none; padding: 0; max-width: none; border-radius: 0; }
+            .tabela-scroll { overflow: visible; }
+            table.tabela { min-width: 0; }
+            tr, .semana-linha, .tile { break-inside: avoid; }
+            .tile { border: 2px solid #c5e1a5; }
+        }
+
+        /* ================= TELEMÓVEL ================= */
+        @media (max-width: 600px) {
+            body { padding: 10px; }
+            .cartao { padding: 20px 16px; border-radius: 28px; border-width: 4px; }
+            h1 { font-size: 1.7em; }
+            .topo-admin h1 { font-size: 1.5em; }
+            button.main-btn { padding: 14px 28px; font-size: 1.25em; }
+            .story-text { font-size: 1.15em; }
+            .separador { font-size: 1em; }
+            #timer-container { width: 100%; }
+            .ecra-centrado.ativo { min-height: calc(100vh - 20px); }
+            #game-container { padding-top: 70px; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ===================== ECRÃ INICIAL ===================== -->
+    <section id="ecra-inicio" class="ecra ecra-centrado ativo">
+        <div class="cartao">
+            <h1>O Macaquinho Brincalhão 🐒</h1>
+            <div class="character-stage"><div id="macaco-inicio" class="sprite bounce"></div></div>
+            <p class="story-text">Olá! Eu sou o Kiko. Vamos fazer ginástica com a boca?</p>
+            <div class="menu-inicial">
+                <button class="btn btn-laranja btn-grande" data-acao="jogar-demo">🍌 Jogar (demonstração)</button>
+                <button class="btn btn-azul btn-grande" data-acao="ir-codigo">🔑 Tenho um código</button>
+                <button class="btn btn-verde btn-grande" data-acao="ir-terapeuta">👩‍⚕️ Área do Terapeuta</button>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===================== LOGIN DO TERAPEUTA ===================== -->
+    <section id="ecra-login" class="ecra ecra-centrado">
+        <div class="cartao" style="max-width: 480px; text-align: left;">
+            <h1 style="text-align:center">Área do Terapeuta</h1>
+            <form id="form-login" novalidate>
+                <label for="login-email">Email</label>
+                <input type="email" id="login-email" autocomplete="username" required>
+                <label for="login-pass">Palavra-passe</label>
+                <input type="password" id="login-pass" autocomplete="current-password" required>
+                <p class="erro" id="login-erro"></p>
+                <button type="submit" class="btn btn-verde btn-grande">Entrar</button>
+            </form>
+            <p class="ajuda" id="login-ajuda"></p>
+            <div style="text-align:center">
+                <button class="btn-link" data-acao="recuperar-pass">🔑 Esqueci-me da palavra-passe</button><br>
+                <button class="btn-link" data-acao="ir-inicio">← Voltar ao início</button>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===================== ÁREA DO TERAPEUTA ===================== -->
+    <section id="ecra-admin" class="ecra">
+        <div class="cartao largo">
+            <div class="topo-admin">
+                <div>
+                    <h1>Área do Terapeuta 🐒</h1>
+                    <span class="quem" id="admin-quem"></span><br>
+                    <span class="modo-dados" id="admin-modo"></span>
+                </div>
+                <button class="btn btn-branco btn-pequeno" data-acao="sair">🚪 Sair</button>
+            </div>
+
+            <nav class="separadores" role="tablist">
+                <button class="separador ativo" data-acao="separador" data-painel="painel-exercicios" role="tab">📚 Exercícios</button>
+                <button class="separador" data-acao="separador" data-painel="painel-pacientes" role="tab">👧 Pacientes</button>
+            </nav>
+
+            <!-- Biblioteca de exercícios -->
+            <div id="painel-exercicios" class="painel ativo">
+                <div class="barra-ferramentas">
+                    <input type="search" id="pesquisa-ex" placeholder="🔍 Pesquisar exercício..." aria-label="Pesquisar exercício">
+                    <button class="btn btn-laranja" data-acao="novo-ex">➕ Novo exercício</button>
+                </div>
+                <div class="chips" id="chips-categorias"></div>
+                <div class="barra-ferramentas">
+                    <p class="contador" id="contador-ex" style="margin:0"></p>
+                    <button class="btn btn-verde btn-pequeno" data-acao="jogar-lista">▶️ Jogar esta lista</button>
+                </div>
+                <div class="grelha" id="grelha-ex"></div>
+            </div>
+
+            <!-- Gestão de pacientes -->
+            <div id="painel-pacientes" class="painel">
+                <div class="barra-ferramentas">
+                    <p class="contador" id="contador-pac" style="margin:0; flex:1"></p>
+                    <button class="btn btn-laranja" data-acao="novo-pac">➕ Novo paciente</button>
+                </div>
+                <p class="ajuda">🔒 Por privacidade, cada paciente tem apenas um <b>código</b> e o <b>primeiro nome</b>.
+                    Não guarde apelido, data de nascimento nem diagnóstico. A criança entra no jogo só com o código.</p>
+                <div class="grelha" id="grelha-pac"></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===================== ENTRADA DO PACIENTE (CÓDIGO) ===================== -->
+    <section id="ecra-codigo" class="ecra ecra-centrado">
+        <div class="cartao" style="max-width: 520px;">
+            <h1>Olá! 🐒</h1>
+            <div class="character-stage"><div id="macaco-codigo" class="sprite bounce"></div></div>
+            <form id="form-codigo" novalidate>
+                <label for="codigo-input" style="text-align:center; font-size:1.2em">Escreve o teu código mágico:</label>
+                <input type="text" id="codigo-input" class="codigo-input" placeholder="KIKO-1234"
+                       autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="14">
+                <p class="erro" id="codigo-erro"></p>
+                <button type="submit" class="main-btn" id="btn-codigo">Entrar! 🍌</button>
+            </form>
+            <button class="btn-link" data-acao="ir-inicio">← Voltar</button>
+        </div>
+    </section>
+
+    <!-- ===================== OS MEUS EXERCÍCIOS (PACIENTE) ===================== -->
+    <section id="ecra-paciente" class="ecra">
+        <div class="cartao">
+            <div class="topo-admin">
+                <h1>Olá, <span id="pac-ola"></span>! 🐵</h1>
+                <button class="btn btn-branco btn-pequeno" data-acao="sair-paciente">🚪 Sair</button>
+            </div>
+            <p class="ajuda" id="pac-offline" hidden>📴 Estás sem internet. Podes jogar na mesma: guardamos tudo e enviamos quando a ligação voltar.</p>
+            <p class="estado-ligacao" id="pac-sync" hidden></p>
+            <p class="story-text" id="pac-resumo"></p>
+            <div id="pac-progresso">
+                <div class="barra-grande"><div id="pac-barra"></div></div>
+                <p class="barra-texto" id="pac-barra-texto"></p>
+            </div>
+            <button class="main-btn" id="btn-jogar-tudo" data-acao="jogar-tudo">Jogar todos! 🍌</button>
+            <div class="grelha grelha-crianca" id="grelha-crianca"></div>
+
+            <!-- Coleção de stickers -->
+            <h2 class="titulo-colecao">⭐ A minha coleção de stickers</h2>
+            <p class="story-text" id="pac-total-stickers"></p>
+            <div class="colecao" id="colecao"></div>
+        </div>
+    </section>
+
+    <!-- ===================== PROGRESSO DE UM PACIENTE (TERAPEUTA) ===================== -->
+    <section id="ecra-progresso" class="ecra">
+        <div class="cartao largo">
+            <div class="topo-admin">
+                <div>
+                    <h1>📊 Progresso de <span id="prog-nome"></span></h1>
+                    <span class="quem" id="prog-codigo"></span>
+                </div>
+                <div class="linha-botoes sem-imprimir" style="margin:0">
+                    <button class="btn btn-branco btn-pequeno" data-acao="voltar-admin">← Voltar</button>
+                    <button class="btn btn-azul btn-pequeno" data-acao="exportar-csv">⬇️ CSV</button>
+                    <button class="btn btn-laranja btn-pequeno" data-acao="imprimir">🖨️ Imprimir / PDF</button>
+                </div>
+            </div>
+
+            <div class="sem-imprimir">
+                <label for="prog-filtro">Ver o período</label>
+                <select id="prog-filtro"></select>
+                <div class="linha-datas" id="prog-datas" hidden>
+                    <label>De <input type="date" id="prog-inicio"></label>
+                    <label>Até <input type="date" id="prog-fim"></label>
+                </div>
+            </div>
+            <p class="ajuda" id="prog-intervalo"></p>
+
+            <div class="resumo-grelha" id="prog-resumo"></div>
+
+            <div class="seccao-progresso">
+                <h2>🗓️ Semana a semana</h2>
+                <div id="prog-semanas"></div>
+            </div>
+            <div class="seccao-progresso">
+                <h2>📋 Por exercício</h2>
+                <div class="tabela-scroll"><table class="tabela" id="prog-exercicios"></table></div>
+            </div>
+            <div class="seccao-progresso">
+                <h2>🕒 Histórico de conclusões</h2>
+                <div class="tabela-scroll"><table class="tabela" id="prog-historico"></table></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===================== JOGO ===================== -->
+    <section id="ecra-jogo" class="ecra ecra-centrado">
+        <div id="game-container" class="cartao">
+            <button class="btn-sair-jogo" data-acao="sair-jogo" aria-label="Sair do jogo">✖</button>
+            <div class="premio" id="premio" aria-live="polite"><span id="premio-sticker"></span>Ganhaste um sticker!</div>
+            <h1>O Macaquinho Brincalhão 🐒</h1>
+            <div id="progress-bar"><div id="progress"></div></div>
+            <p id="titulo-ex" class="titulo-ex"></p>
+
+            <div class="character-stage"><div id="monkey" class="sprite bounce"></div></div>
+
+            <div id="slide-content">
+                <p id="story" class="story-text"></p>
+                <p id="instruction" class="instruction-text"></p>
+
+                <!-- Cronómetro (só aparece nos exercícios que o usam) -->
+                <div id="timer-container">
+                    <div id="time-display">00:00</div>
+                    <div class="timer-controls">
+                        <button class="timer-btn timer-toggle" id="toggle-btn" data-acao="cron-alternar">▶️ Andar</button>
+                        <button class="timer-btn timer-reset" data-acao="cron-zero">🔄 Zero</button>
+                    </div>
+                </div>
+            </div>
+
+            <button class="main-btn" id="action-btn" data-acao="avancar">Começar! 🍌</button>
+            <div><button class="btn-link" id="btn-instrucao" data-acao="alternar-instrucao"></button></div>
+        </div>
+    </section>
+
+    <!-- ===================== JANELA: EXERCÍCIO PERSONALIZADO ===================== -->
+    <dialog id="dlg-exercicio">
+        <form id="form-exercicio" class="dialogo-corpo" novalidate>
+            <h2 id="dlg-ex-titulo">Novo exercício</h2>
+            <input type="hidden" id="ex-id">
+
+            <label for="ex-nome">Nome do exercício *</label>
+            <input type="text" id="ex-nome" maxlength="60" required>
+
+            <label for="ex-categoria">Categoria</label>
+            <select id="ex-categoria"></select>
+
+            <label for="ex-expressao">Expressão do Kiko</label>
+            <div class="previa-expressao">
+                <div class="mini" id="ex-previa"></div>
+                <select id="ex-expressao"></select>
+            </div>
+
+            <label for="ex-historia">História para a criança *</label>
+            <textarea id="ex-historia" maxlength="400" required placeholder="O Kiko..."></textarea>
+
+            <label for="ex-instrucao">Instrução para o terapeuta</label>
+            <textarea id="ex-instrucao" maxlength="400"></textarea>
+
+            <label for="ex-botao">Texto do botão</label>
+            <input type="text" id="ex-botao" maxlength="30" placeholder="Consegui!">
+
+            <label class="caixa-check"><input type="checkbox" id="ex-cronometro"> ⏱️ Usa cronómetro</label>
+
+            <p class="erro" id="ex-erro"></p>
+            <div class="linha-botoes">
+                <button type="button" class="btn btn-branco" data-acao="fechar-dialogo">Cancelar</button>
+                <button type="submit" class="btn btn-verde">💾 Guardar</button>
+            </div>
+        </form>
+    </dialog>
+
+    <!-- ===================== JANELA: PACIENTE ===================== -->
+    <dialog id="dlg-paciente">
+        <form id="form-paciente" class="dialogo-corpo" novalidate>
+            <h2 id="dlg-pac-titulo">Novo paciente</h2>
+            <input type="hidden" id="pac-id">
+
+            <label for="pac-nome">Primeiro nome *</label>
+            <input type="text" id="pac-nome" maxlength="20" autocomplete="off" required placeholder="Ex.: João">
+            <p class="ajuda">Só o primeiro nome. Sem apelido, data de nascimento ou diagnóstico.</p>
+
+            <label>Código de entrada</label>
+            <div class="barra-ferramentas">
+                <span class="pac-codigo" id="pac-codigo">—</span>
+                <button type="button" class="btn btn-branco btn-pequeno" data-acao="gerar-codigo">🔄 Gerar outro</button>
+            </div>
+            <p class="ajuda" id="pac-aviso-codigo" hidden>⚠️ Se mudar o código, o código antigo deixa de funcionar.</p>
+
+            <p class="erro" id="pac-erro"></p>
+            <div class="linha-botoes">
+                <button type="button" class="btn btn-branco" data-acao="fechar-dialogo">Cancelar</button>
+                <button type="submit" class="btn btn-verde">💾 Guardar</button>
+            </div>
+        </form>
+    </dialog>
+
+    <!-- ===================== JANELA: ATRIBUIR EXERCÍCIOS ===================== -->
+    <dialog id="dlg-atribuir" class="dlg-largo">
+        <form id="form-atribuir" class="dialogo-corpo" novalidate>
+            <h2>📋 Exercícios de <span id="atr-nome"></span></h2>
+
+            <label for="atr-periodo">Período</label>
+            <select id="atr-periodo">
+                <option value="">Sem prazo (sempre disponíveis)</option>
+                <option value="esta">Esta semana</option>
+                <option value="proxima">Próxima semana</option>
+                <option value="datas">Escolher datas…</option>
+            </select>
+            <div class="linha-datas" id="atr-datas" hidden>
+                <label>De <input type="date" id="atr-inicio"></label>
+                <label>Até <input type="date" id="atr-fim"></label>
+            </div>
+            <p class="ajuda" id="atr-periodo-texto"></p>
+
+            <div class="barra-ferramentas" style="margin-top:14px">
+                <input type="search" id="atr-pesquisa" placeholder="🔍 Pesquisar..." aria-label="Pesquisar exercício">
+                <select id="atr-categoria" style="flex:1 1 200px" aria-label="Categoria"></select>
+            </div>
+            <div class="barra-ferramentas">
+                <span class="contador" id="atr-contador" style="margin:0; flex:1"></span>
+                <button type="button" class="btn btn-branco btn-pequeno" data-acao="atr-todos">✅ Marcar visíveis</button>
+                <button type="button" class="btn btn-branco btn-pequeno" data-acao="atr-nenhum">⬜ Desmarcar visíveis</button>
+            </div>
+            <div class="lista-atribuir" id="atr-lista"></div>
+
+            <p class="erro"></p>
+            <div class="linha-botoes">
+                <button type="button" class="btn btn-branco" data-acao="fechar-dialogo">Cancelar</button>
+                <button type="submit" class="btn btn-verde">💾 Guardar</button>
+            </div>
+        </form>
+    </dialog>
+
+    <!-- ===================== JANELA: CONFIRMAÇÃO ===================== -->
+    <dialog id="dlg-confirmar">
+        <div class="dialogo-corpo">
+            <p id="confirmar-msg" style="font-size:1.2em; font-weight:800"></p>
+            <div class="linha-botoes">
+                <button class="btn btn-branco" value="nao">Cancelar</button>
+                <button class="btn btn-vermelho" value="sim">Sim, apagar</button>
+            </div>
+        </div>
+    </dialog>
+
+    <div id="aviso" role="status" aria-live="polite"></div>
+
+<script type="module">
+// =====================================================================
+//  1. CATEGORIAS
+// =====================================================================
+const CATEGORIAS = {
+    labios:      { nome: "Lábios",      emoji: "💋", cor: "#fce4ec", texto: "#ad1457" },
+    lingua:      { nome: "Língua",      emoji: "👅", cor: "#f3e5f5", texto: "#7b1fa2" },
+    mandibula:   { nome: "Mandíbula",   emoji: "🦷", cor: "#e3f2fd", texto: "#1565c0" },
+    bochechas:   { nome: "Bochechas",   emoji: "😊", cor: "#fff3e0", texto: "#e65100" },
+    sopro:       { nome: "Sopro",       emoji: "🌬️", cor: "#e0f7fa", texto: "#00838f" },
+    palato:      { nome: "Palato mole", emoji: "🗣️", cor: "#ede7f6", texto: "#4527a0" },
+    respiracao:  { nome: "Respiração",  emoji: "👃", cor: "#e8f5e9", texto: "#2e7d32" },
+    relaxamento: { nome: "Relaxamento", emoji: "😴", cor: "#fffde7", texto: "#f57f17" }
+};
+
+// =====================================================================
+//  2. DESENHO DO MACACO (SVG)
+//  Cada "parte" descreve a cara num instante: boca, língua, olhos,
+//  bochechas e pormenores extra (vela, bolhas, zzz...).
+//  Cada "expressão" usa 1 parte (fixa) ou 2 partes (que alternam),
+//  e pode ter um movimento (lados, vibrar, respirar...).
+// =====================================================================
+const ESCURO = "#4e342e";
+const BIQUINHO_PEQ = "M 47,65 C 47,61.5 53,61.5 53,65 C 53,68.5 47,68.5 47,65 Z";
+
+const PARTES = {
+    neutra:          { boca: "M 40,65 Q 50,65 60,65" },
+    sorriso:         { boca: "M 38,63 Q 50,74 62,63" },
+    sorrisoDentes:   { boca: "M 36,62 Q 50,80 64,62 Z", bocaFill: "#fff", detalhe: "M 38.5,64.5 Q 50,69 61.5,64.5" },
+    sorrisoEsq:      { boca: "M 37,61 Q 42,67 50,66 L 60,66" },
+    sorrisoDir:      { boca: "M 40,66 L 50,66 Q 58,67 63,61" },
+    aberta:          { boca: "M 35,65 Q 50,85 65,65 Z", bocaFill: ESCURO, lingua: "M 42,72 Q 50,78 58,72" },
+    abertaGrande:    { boca: "M 33,63 Q 50,94 67,63 Z", bocaFill: ESCURO, lingua: "M 42,73 Q 50,82 58,73" },
+    falar:           { boca: "M 40,65 Q 50,76 60,65 Z", bocaFill: ESCURO, lingua: "M 45,69 Q 50,72 55,69" },
+    bocejo:          { boca: "M 41,63 C 40,88 60,88 59,63 C 58,57 42,57 41,63 Z", bocaFill: ESCURO, lingua: "M 44,78 Q 50,83 56,78", olhos: "fechados" },
+    linguaFora:      { boca: "M 40,66 Q 50,70 60,66", lingua: "M 43,66 C 43,90 57,90 57,66 Z" },
+    linguaCurta:     { boca: "M 40,66 Q 50,70 60,66", lingua: "M 44,66 C 44,80 56,80 56,66 Z" },
+    linguaFina:      { boca: "M 42,66 Q 50,68 58,66", lingua: "M 48,66 Q 50,95 52,66 Z" },
+    linguaGrossa:    { boca: "M 40,66 Q 50,70 60,66", lingua: "M 38,66 Q 50,85 62,66 Z" },
+    linguaPalato:    { boca: "M 40,65 Q 50,80 60,65 Z", bocaFill: ESCURO, lingua: "M 45,65 Q 50,55 55,65 Z" },
+    linguaEsq:       { boca: "M 40,66 Q 50,70 60,66", lingua: "M 44,67 C 38,66 29,70 31,75 C 33,79 42,72 47,68 Z" },
+    linguaDir:       { boca: "M 40,66 Q 50,70 60,66", lingua: "M 56,67 C 62,66 71,70 69,75 C 67,79 58,72 53,68 Z" },
+    linguaCima:      { boca: "M 38,66 Q 50,74 62,66 Z", bocaFill: ESCURO, lingua: "M 44,67 C 43,57 57,57 56,67 Z" },
+    linguaBochEsq:   { boca: "M 43,66 Q 50,67 57,66", bochechas: "esquerda" },
+    linguaBochDir:   { boca: "M 43,66 Q 50,67 57,66", bochechas: "direita" },
+    estalo:          { boca: "M 35,65 Q 50,75 65,65 Z", bocaFill: ESCURO, lingua: "M 45,70 Q 50,65 55,70" },
+    biquinho:        { boca: "M 46,65 C 46,60 54,60 54,65 C 54,70 46,70 46,65 Z", bocaFill: "#c2185b" },
+    bocaO:           { boca: "M 44.5,66 C 44.5,58.5 55.5,58.5 55.5,66 C 55.5,73.5 44.5,73.5 44.5,66 Z", bocaFill: ESCURO },
+    labiosDentro:    { boca: "M 42,66 L 58,66", espessura: 3.5, detalhe: "M 40,64 Q 41,66 40,68 M 60,64 Q 59,66 60,68" },
+    labiosVibrar:    { boca: "M 43,66 q 2.5,-3 5,0 t 5,0 t 5,0", espessura: 2.5, extras: ["sopro"] },
+    coelho:          { boca: "M 41,64 Q 50,62 59,64 L 58,68 Q 50,69.5 42,68 Z", bocaFill: "#fff", detalhe: "M 50,63 L 50,68.7 M 40,70 Q 50,73 60,70", extras: ["sopro"] },
+    mmm:             { boca: "M 42,66 Q 50,64 58,66", espessura: 3, extras: ["musica"] },
+    fechadaMastigar: { boca: "M 42,66 Q 50,71 58,66", espessura: 2.5 },
+    buldogue:        { boca: "M 38,68 Q 50,62 62,68", detalhe: "M 42,66.4 L 44,62.5 L 46,65.3 M 54,65.3 L 56,62.5 L 58,66.4" },
+    bochechasCheias: { boca: "M 45,67 Q 50,68 55,67", bochechas: "cheias" },
+    bochEsqCheia:    { boca: "M 45,67 Q 50,68 55,67", bochechas: "esquerda" },
+    bochDirCheia:    { boca: "M 45,67 Q 50,68 55,67", bochechas: "direita" },
+    bochechasChupadas:{ boca: "M 47,66 C 47,61 53,61 53,66 C 53,71 47,71 47,66 Z", bocaFill: "#c2185b", bochechas: "chupadas" },
+    massagem:        { boca: "M 38,63 Q 50,74 62,63", olhos: "fechados", bochechas: "rosadas" },
+    relaxado:        { boca: "M 41,64 Q 50,70 59,64", olhos: "fechados" },
+    bocaSolta:       { boca: "M 44,66 Q 50,72 56,66 Z", bocaFill: ESCURO, olhos: "fechados" },
+    dormir:          { boca: "M 42,68 Q 50,68 58,68", olhos: "fechados", extras: ["zzz"] },
+    vela:            { boca: BIQUINHO_PEQ, bocaFill: "#c2185b", extras: ["sopro", "vela"] },
+    bolhas:          { boca: BIQUINHO_PEQ, bocaFill: "#c2185b", extras: ["bolhas"] },
+    soprar:          { boca: BIQUINHO_PEQ, bocaFill: "#c2185b", extras: ["sopro"] },
+    cantarA:         { boca: "M 35,65 Q 50,85 65,65 Z", bocaFill: ESCURO, lingua: "M 42,72 Q 50,78 58,72", extras: ["musica"] },
+    gargarejo:       { boca: "M 35,65 Q 50,85 65,65 Z", bocaFill: ESCURO, lingua: "M 42,72 Q 50,78 58,72", olhos: "fechados", extras: ["bolhas"] },
+    cheirarFlor:     { boca: "M 44,67 Q 50,68 56,67", olhos: "fechados", extras: ["flor", "arNariz"] },
+    arNariz:         { boca: "M 43,67 Q 50,67 57,67", espessura: 2.5, extras: ["arNariz"] },
+    abelha:          { boca: "M 40,63 Q 50,74 60,63 Z", bocaFill: "#fff", detalhe: "M 42,64.5 Q 50,67.5 58,64.5", extras: ["musica"] }
+};
+
+// Lista de expressões que se podem escolher para cada exercício
+const EXPRESSOES = {
+    neutra:            { nome: "Cara normal",                    fases: ["neutra"] },
+    sorriso:           { nome: "Sorriso",                        fases: ["sorriso"] },
+    sorrisoDentes:     { nome: "Sorriso com dentes",             fases: ["sorrisoDentes"] },
+    sorrisoBeijo:      { nome: "Sorriso ↔ beijinho",             fases: ["sorriso", "biquinho"] },
+    sorrisoLado:       { nome: "Sorriso de lado (alterna)",      fases: ["sorrisoEsq", "sorrisoDir"], vel: "2s" },
+    biquinho:          { nome: "Biquinho / beijinho",            fases: ["biquinho"] },
+    peixinho:          { nome: "Boca de peixinho (abre/fecha)",  fases: ["biquinho", "bocaO"], vel: "1.2s" },
+    labiosDentro:      { nome: "Lábios escondidos",              fases: ["labiosDentro"] },
+    labiosVibrar:      { nome: "Lábios a vibrar (brrr)",         fases: ["labiosVibrar"], mov: "vibrar" },
+    coelho:            { nome: "Dentes no lábio (coelhinho)",    fases: ["coelho"] },
+    mmm:               { nome: "Lábios fechados (mmm)",          fases: ["mmm"] },
+    aberta:            { nome: "Boca aberta",                    fases: ["aberta"] },
+    abertaGrande:      { nome: "Boca muito aberta",              fases: ["abertaGrande"] },
+    abreFecha:         { nome: "Abre e fecha a boca",            fases: ["abertaGrande", "neutra"], vel: "2.4s" },
+    bocejo:            { nome: "Bocejo",                         fases: ["bocejo"] },
+    mandibulaLados:    { nome: "Queixo para os lados",           fases: ["falar"], mov: "lados" },
+    mastigar:          { nome: "A mastigar",                     fases: ["fechadaMastigar", "neutra"], vel: "0.9s" },
+    buldogue:          { nome: "Queixo para a frente",           fases: ["buldogue"], mov: "frente" },
+    linguaFora:        { nome: "Língua de fora",                 fases: ["linguaFora"] },
+    linguaFina:        { nome: "Língua fininha",                 fases: ["linguaFina"] },
+    linguaFinaGrossa:  { nome: "Língua fina ↔ grossa",           fases: ["linguaFina", "linguaGrossa"], vel: "2s" },
+    linguaLados:       { nome: "Língua para os lados",           fases: ["linguaEsq", "linguaDir"] },
+    linguaCimaBaixo:   { nome: "Língua para cima e baixo",       fases: ["linguaCima", "linguaFora"] },
+    linguaRoda:        { nome: "Língua à volta dos lábios",      fases: ["linguaCurta"], mov: "roda" },
+    linguaBochecha:    { nome: "Língua empurra a bochecha",      fases: ["linguaBochEsq", "linguaBochDir"], vel: "2s" },
+    linguaPalato:      { nome: "Língua no céu da boca",          fases: ["linguaPalato"] },
+    cobra:             { nome: "Língua entra e sai (cobra)",     fases: ["linguaFina", "neutra"], vel: "0.8s" },
+    estalo:            { nome: "Estalo da língua",               fases: ["estalo"] },
+    bochechasCheias:   { nome: "Bochechas cheias de ar",         fases: ["bochechasCheias"] },
+    bochechasAlternar: { nome: "Ar de uma bochecha para a outra", fases: ["bochEsqCheia", "bochDirCheia"], vel: "2s" },
+    bochechasChupadas: { nome: "Bochechas chupadas (peixe)",     fases: ["bochechasChupadas"] },
+    massagem:          { nome: "Bochechas rosadas (massagem)",   fases: ["massagem"] },
+    soprar:            { nome: "A soprar",                       fases: ["soprar"] },
+    vela:              { nome: "A soprar uma vela",              fases: ["vela"] },
+    bolhas:            { nome: "Bolas de sabão / bolhinhas",     fases: ["bolhas"] },
+    cantarA:           { nome: "A cantar (Aaaa)",                fases: ["cantarA"] },
+    kaka:              { nome: "Sílabas rápidas (ka-ka)",        fases: ["aberta", "falar"], vel: "0.7s" },
+    gargarejo:         { nome: "Gargarejo",                      fases: ["gargarejo"], mov: "vibrar" },
+    cheirarFlor:       { nome: "A cheirar uma flor",             fases: ["cheirarFlor"], mov: "respirar" },
+    florVela:          { nome: "Cheira a flor ↔ sopra a vela",   fases: ["cheirarFlor", "vela"], vel: "4s" },
+    respirar:          { nome: "Respiração calma",               fases: ["relaxado"], mov: "respirar" },
+    arNariz:           { nome: "Ar a sair pelo nariz",           fases: ["arNariz"] },
+    abelha:            { nome: "Abelhinha a zumbir",             fases: ["abelha"] },
+    relaxado:          { nome: "Relaxado de olhos fechados",     fases: ["relaxado"] },
+    girassol:          { nome: "Cabeça a balançar devagar",      fases: ["relaxado"], mov: "abanar" },
+    bocaSolta:         { nome: "Boca solta (boneco de trapos)",  fases: ["bocaSolta"] },
+    dormir:            { nome: "A dormir",                       fases: ["dormir"] }
+};
+
+const OLHOS = {
+    abertos: `
+        <ellipse cx="38" cy="45" rx="5" ry="7" fill="#fff" stroke="#4e342e" stroke-width="1"/>
+        <circle cx="39" cy="46" r="3" fill="#000"/><circle cx="40" cy="45" r="1" fill="#fff"/>
+        <ellipse cx="62" cy="45" rx="5" ry="7" fill="#fff" stroke="#4e342e" stroke-width="1"/>
+        <circle cx="61" cy="46" r="3" fill="#000"/><circle cx="60" cy="45" r="1" fill="#fff"/>`,
+    fechados: `
+        <path d="M 33,45 Q 38,40 43,45" fill="none" stroke="#4e342e" stroke-width="2" stroke-linecap="round"/>
+        <path d="M 57,45 Q 62,40 67,45" fill="none" stroke="#4e342e" stroke-width="2" stroke-linecap="round"/>`
+};
+
+// Bochechas: rosadas normais, cheias de ar (balões) ou chupadas para dentro
+const rosa = (r = 4, o = 0.6) =>
+    `<circle cx="28" cy="55" r="${r}" fill="#ff8a80" opacity="${o}"/><circle cx="72" cy="55" r="${r}" fill="#ff8a80" opacity="${o}"/>`;
+const balaoEsq = `<ellipse cx="25" cy="62" rx="9" ry="8" fill="#d7ccc8" stroke="#a1887f" stroke-width="1.2"/><circle cx="25" cy="60" r="3.5" fill="#ff8a80" opacity=".7"/>`;
+const balaoDir = `<ellipse cx="75" cy="62" rx="9" ry="8" fill="#d7ccc8" stroke="#a1887f" stroke-width="1.2"/><circle cx="75" cy="60" r="3.5" fill="#ff8a80" opacity=".7"/>`;
+const BOCHECHAS = {
+    normal: rosa(),
+    rosadas: rosa(6, 0.85),
+    cheias: balaoEsq + balaoDir,
+    esquerda: balaoEsq + `<circle cx="72" cy="55" r="4" fill="#ff8a80" opacity="0.6"/>`,
+    direita: balaoDir + `<circle cx="28" cy="55" r="4" fill="#ff8a80" opacity="0.6"/>`,
+    chupadas: rosa(3, 0.5) +
+        `<path d="M 31,57 Q 36,64 32,71" fill="none" stroke="#a1887f" stroke-width="1.5" stroke-linecap="round"/>
+         <path d="M 69,57 Q 64,64 68,71" fill="none" stroke="#a1887f" stroke-width="1.5" stroke-linecap="round"/>`
+};
+
+// Pormenores extra à volta da cara
+const EXTRAS = {
+    zzz: `<g class="flutua" fill="#5c6bc0" font-family="Nunito, sans-serif" font-weight="900">
+            <text x="70" y="26" font-size="8">z</text><text x="78" y="17" font-size="10">z</text><text x="87" y="8" font-size="12">Z</text></g>`,
+    sopro: `<g class="ar" fill="none" stroke="#64b5f6" stroke-width="1.8" stroke-linecap="round">
+            <path d="M 59,63 q 5,-3 10,0 t 10,0"/><path d="M 60,69 q 5,-3 10,0 t 10,0"/><path d="M 59,75 q 4,-2 8,0"/></g>`,
+    vela: `<g><rect x="84" y="76" width="8" height="20" rx="2" fill="#fff59d" stroke="#f9a825" stroke-width="1"/>
+            <path d="M 85,83 L 91,80 M 85,89 L 91,86" stroke="#f48fb1" stroke-width="1.5"/>
+            <line x1="88" y1="76" x2="88" y2="73" stroke="#4e342e" stroke-width="1"/>
+            <path class="chama" d="M 88,62 C 84.5,67 85,72.5 88,72.5 C 91,72.5 91.5,67 88,62 Z" fill="#ffb300" stroke="#ff6f00" stroke-width=".8"/></g>`,
+    bolhas: `<g class="flutua" fill="rgba(129,212,250,.35)" stroke="#29b6f6" stroke-width="1">
+            <circle cx="66" cy="72" r="3"/><circle cx="75" cy="63" r="4.5"/><circle cx="85" cy="74" r="2.5"/>
+            <circle cx="83" cy="52" r="3.5"/><circle cx="91" cy="62" r="2"/></g>`,
+    flor: `<g><path d="M 14,99 Q 16,90 18,82" stroke="#43a047" stroke-width="2" fill="none"/>
+            <path d="M 16,92 q -6,-2 -7,-7 q 6,1 7,7" fill="#66bb6a"/>
+            <g fill="#f48fb1"><circle cx="18" cy="74" r="3.6"/><circle cx="23.7" cy="78.1" r="3.6"/><circle cx="21.5" cy="84.9" r="3.6"/>
+            <circle cx="14.5" cy="84.9" r="3.6"/><circle cx="12.3" cy="78.1" r="3.6"/></g>
+            <circle cx="18" cy="80" r="3" fill="#ffee58"/></g>`,
+    arNariz: `<g class="ar" fill="none" stroke="#64b5f6" stroke-width="1.5" stroke-linecap="round">
+            <path d="M 46,58 q -3,4 -8,4"/><path d="M 54,58 q 3,4 8,4"/></g>`,
+    musica: `<g class="flutua" fill="#ab47bc" font-weight="900">
+            <text x="68" y="76" font-size="10">♪</text><text x="79" y="63" font-size="12">♫</text></g>`
+};
+
+// Desenha uma "parte" (olhos, bochechas, boca, língua e extras)
+function desenharParte(p) {
+    const boca = `<path d="${p.boca}" fill="${p.bocaFill || "none"}" stroke="${ESCURO}" stroke-width="${p.espessura || 2}" stroke-linecap="round" stroke-linejoin="round"/>`;
+    const lingua = p.lingua ? `<path class="lingua" d="${p.lingua}" fill="#f06292" stroke="#c2185b" stroke-width="1.5"/>` : "";
+    const detalhe = p.detalhe ? `<path d="${p.detalhe}" fill="none" stroke="${ESCURO}" stroke-width="1" stroke-linecap="round"/>` : "";
+    const extras = (p.extras || []).map(e => EXTRAS[e] || "").join("");
+    return (OLHOS[p.olhos] || OLHOS.abertos) +
+           (BOCHECHAS[p.bochechas] || BOCHECHAS.normal) +
+           `<g class="boca-grupo">${boca}${lingua}${detalhe}</g>` + extras;
+}
+
+// Devolve o SVG completo do Kiko com a expressão pedida
+function macacoSVG(chave) {
+    const ex = EXPRESSOES[chave] || EXPRESSOES.neutra;
+    const alterna = ex.fases.length > 1;
+    const camadas = ex.fases.map((k, i) =>
+        `<g class="fase fase-${i}${alterna ? " alterna" : ""}">${desenharParte(PARTES[k] || PARTES.neutra)}</g>`).join("");
+    return `<svg class="macaco mov-${ex.mov || "nenhum"}" viewBox="0 0 100 100" style="--vel:${ex.vel || "1.6s"}" aria-hidden="true">
+        <g class="cabeca">
+            <circle cx="15" cy="45" r="12" fill="#8d6e63" stroke="#4e342e" stroke-width="2"/>
+            <circle cx="15" cy="45" r="7" fill="#d7ccc8"/>
+            <circle cx="85" cy="45" r="12" fill="#8d6e63" stroke="#4e342e" stroke-width="2"/>
+            <circle cx="85" cy="45" r="7" fill="#d7ccc8"/>
+            <circle cx="50" cy="50" r="35" fill="#8d6e63" stroke="#4e342e" stroke-width="2"/>
+            <path d="M 50,35 C 30,15 15,45 25,65 C 35,85 65,85 75,65 C 85,45 70,15 50,35 Z" fill="#d7ccc8"/>
+            ${camadas}
+            <ellipse cx="50" cy="55" rx="4" ry="3" fill="#4e342e"/>
+        </g>
+    </svg>`;
+}
+
+// =====================================================================
+//  3. BIBLIOTECA DE EXERCÍCIOS
+//  Campos: id, nome, categoria, historia (para a criança),
+//  instrucao (para o terapeuta), botao (texto do botão),
+//  expressao (chave de EXPRESSOES), cronometro (true/false)
+// =====================================================================
+const EXERCICIOS_BASE = [
+    // ---------- Os 8 exercícios originais ----------
+    { id: "banana-gigante", original: true, nome: "Banana Gigante", categoria: "mandibula", expressao: "aberta", cronometro: false, botao: "Boca Aberta!",
+      historia: "O Kiko quer comer uma banana gigante! Ele abre a boca o máximo que consegue!",
+      instrucao: "Incentive a criança a abrir muito bem a boca. 😲" },
+    { id: "pingos-chuva", original: true, nome: "Pingos de Chuva", categoria: "lingua", expressao: "linguaFora", cronometro: false, botao: "Língua de Fora!",
+      historia: "Agora o Kiko deita a língua toda para fora para apanhar os pingos de chuva!",
+      instrucao: "Pedir para esticar a língua toda para fora e para a frente. 👅" },
+    { id: "lingua-agulha", original: true, nome: "Língua Agulha", categoria: "lingua", expressao: "linguaFina", cronometro: true, botao: "Bati o Recorde!",
+      historia: "O Kiko transforma a sua língua numa agulha fininha bem esticada! Durante quanto tempo consegues segurar?",
+      instrucao: "Esticar a língua fininha e usar o cronómetro para registar o tempo recorde! ⏱️" },
+    { id: "lingua-magica", original: true, nome: "Língua Mágica", categoria: "lingua", expressao: "linguaFinaGrossa", cronometro: false, botao: "Fiz Magia!",
+      historia: "Olha que giro! A língua do Kiko fica fininha e depois grossa. Parece magia!",
+      instrucao: "Alternar entre língua fininha (pontiaguda) e língua grossa (espalmada). ↔️" },
+    { id: "beijinhos", original: true, nome: "Beijinhos Repuxados", categoria: "labios", expressao: "biquinho", cronometro: false, botao: "Mandei Beijinhos!",
+      historia: "O Kiko quer mandar beijinhos repuxados para todos os amigos que estão a ver!",
+      instrucao: "Fazer biquinho e dar estalos de beijinhos várias vezes seguidas. 💋" },
+    { id: "ventosa", original: true, nome: "A Ventosa", categoria: "lingua", expressao: "linguaPalato", cronometro: true, botao: "Ventosa Descolou!",
+      historia: "Como uma ventosa, o Kiko cola a língua ao teto da casa (céu da boca)! Vamos ver quanto tempo a ventosa aguenta colada?",
+      instrucao: "Sugar e colar a língua no palato (céu da boca). Usar o cronómetro para contar o tempo! ⏱️" },
+    { id: "cavalinho", original: true, nome: "O Cavalinho", categoria: "lingua", expressao: "estalo", cronometro: false, botao: "Fiz o Cavalinho!",
+      historia: "Para festejar, o Kiko faz o barulho de um cavalinho a passear: Clack, Clack, Clack!",
+      instrucao: "Estalar a língua no céu da boca, imitando o trote de um cavalo. 🐎" },
+    { id: "boa-sesta", original: true, nome: "Boa Sesta", categoria: "relaxamento", expressao: "dormir", cronometro: false, botao: "Boa Sesta!",
+      historia: "O Kiko ficou cansado de tanta ginástica. Fechou a boquinha e foi dormir a sesta...",
+      instrucao: "Fechar suavemente os lábios e respirar pelo nariz. Relaxar. 😴" },
+
+    // ---------- LÁBIOS ----------
+    { id: "sorriso-beijinho", nome: "Sorriso e Beijinho", categoria: "labios", expressao: "sorrisoBeijo", cronometro: false, botao: "Sorri e Beijei!",
+      historia: "O Kiko está tão contente que sorri muito... e depois manda um beijinho! Sorriso, beijinho, sorriso, beijinho!",
+      instrucao: "Alternar sorriso largo (lábios esticados) e biquinho, 10 vezes, devagar." },
+    { id: "sorriso-fotografia", nome: "Sorriso de Fotografia", categoria: "labios", expressao: "sorrisoDentes", cronometro: true, botao: "Xis!",
+      historia: "Xis! O Kiko vai tirar uma fotografia e mostra todos os dentinhos num sorriso enorme. Aguenta o sorriso até à fotografia!",
+      instrucao: "Sorriso largo a mostrar os dentes; manter o máximo de tempo possível (cronómetro)." },
+    { id: "labios-escondidos", nome: "Lábios Escondidos", categoria: "labios", expressao: "labiosDentro", cronometro: true, botao: "Encontrei-os!",
+      historia: "Onde estão os lábios do Kiko? Ele escondeu-os dentro da boca, como no jogo das escondidas!",
+      instrucao: "Recolher os dois lábios para dentro da boca, apertando-os, e manter. Depois soltar." },
+    { id: "cavalo-cansado", nome: "Cavalo Cansado", categoria: "labios", expressao: "labiosVibrar", cronometro: false, botao: "Brrrr!",
+      historia: "Brrrrr! O Kiko imita um cavalo cansado a fazer vibrar os lábios. Que barulho engraçado!",
+      instrucao: "Vibrar os lábios soltos soprando ar (som «brrr»), várias vezes." },
+    { id: "boca-peixinho", nome: "Boca de Peixinho", categoria: "labios", expressao: "peixinho", cronometro: false, botao: "Glub, Glub!",
+      historia: "Glub, glub! O Kiko mergulhou no rio e faz boca de peixinho a abrir e a fechar.",
+      instrucao: "Lábios em «O» a abrir e a fechar, como um peixe, sem abrir muito a mandíbula." },
+    { id: "coelhinho", nome: "O Coelhinho", categoria: "labios", expressao: "coelho", cronometro: false, botao: "Fffff!",
+      historia: "O Kiko faz de coelhinho e pousa os dentes de cima no lábio de baixo. Fffff, como o vento!",
+      instrucao: "Dentes superiores apoiados no lábio inferior; soprar «fff» suavemente." },
+    { id: "bolo-delicioso", nome: "Mmm, que Bolo Bom!", categoria: "labios", expressao: "mmm", cronometro: true, botao: "Mmmm!",
+      historia: "O Kiko provou um bolo delicioso! Fecha bem os lábios e diz: Mmmmmm!",
+      instrucao: "Lábios fechados com ligeira pressão, prolongar o som «mmm» (cronómetro)." },
+
+    // ---------- LÍNGUA ----------
+    { id: "limpa-vidros", nome: "Limpa-Pára-Brisas", categoria: "lingua", expressao: "linguaLados", cronometro: false, botao: "Vidro Limpo!",
+      historia: "O Kiko é um carro na chuva! A língua dele é o limpa-pára-brisas: esquerda, direita, esquerda, direita!",
+      instrucao: "Língua fora, mover de um canto da boca ao outro sem tocar nos lábios, 10 vezes." },
+    { id: "elevador", nome: "O Elevador", categoria: "lingua", expressao: "linguaCimaBaixo", cronometro: false, botao: "Cheguei ao Topo!",
+      historia: "A língua do Kiko é um elevador: sobe até ao nariz e desce até ao queixo! Sobe... desce...",
+      instrucao: "Língua fora: tentar tocar no nariz e depois no queixo, alternando." },
+    { id: "bigode-chocolate", nome: "Bigode de Chocolate", categoria: "lingua", expressao: "linguaRoda", cronometro: false, botao: "Já Está Limpinho!",
+      historia: "Ups! O Kiko ficou com chocolate à volta da boca. Lambe os lábios todos, à volta, à volta!",
+      instrucao: "Passar a ponta da língua à volta dos lábios, em círculo, nos dois sentidos." },
+    { id: "rebucado-escondido", nome: "Rebuçado Escondido", categoria: "lingua", expressao: "linguaBochecha", cronometro: false, botao: "Achei o Rebuçado!",
+      historia: "O Kiko escondeu um rebuçado na bochecha! Empurra-o com a língua de um lado... e do outro!",
+      instrucao: "Empurrar a bochecha por dentro com a ponta da língua, alternando os lados." },
+    { id: "contar-dentes", nome: "Contar os Dentes", categoria: "lingua", expressao: "linguaPalato", cronometro: false, botao: "Contei Todos!",
+      historia: "O Kiko quer contar os dentes com a pontinha da língua: um, dois, três, quatro...",
+      instrucao: "Boca aberta: tocar com a ponta da língua em cada dente de cima, de um lado ao outro." },
+    { id: "vassoura", nome: "Vassoura no Céu da Boca", categoria: "lingua", expressao: "linguaPalato", cronometro: false, botao: "Varri Tudo!",
+      historia: "A língua do Kiko é uma vassoura que varre o céu da boca, da frente para trás. Vamos limpar a casa!",
+      instrucao: "Boca aberta: deslizar a ponta da língua pelo palato, dos dentes para trás." },
+    { id: "cobrinha", nome: "A Cobrinha", categoria: "lingua", expressao: "cobra", cronometro: false, botao: "Sssss!",
+      historia: "O Kiko faz de cobrinha: a língua entra e sai muito depressa! Sssss!",
+      instrucao: "Pôr e tirar a língua rapidamente, sem tocar nos lábios, 10 vezes." },
+
+    // ---------- MANDÍBULA ----------
+    { id: "jacare", nome: "Jacaré Esfomeado", categoria: "mandibula", expressao: "abreFecha", cronometro: false, botao: "Nham, Nham!",
+      historia: "O Kiko faz de jacaré: abre a boca muito, muito... e fecha devagarinho! Nham!",
+      instrucao: "Abrir a boca ao máximo e fechar lentamente, 10 vezes, sem desviar o queixo." },
+    { id: "queixo-baloico", nome: "Queixo Baloiço", categoria: "mandibula", expressao: "mandibulaLados", cronometro: false, botao: "Baloicei!",
+      historia: "O queixo do Kiko é um baloiço que vai para um lado e para o outro. Vai... e vem!",
+      instrucao: "Boca ligeiramente aberta: mover a mandíbula para a esquerda e para a direita, devagar." },
+    { id: "pastilha-magica", nome: "Pastilha Mágica", categoria: "mandibula", expressao: "mastigar", cronometro: false, botao: "Mastiguei!",
+      historia: "O Kiko está a mastigar uma pastilha elástica imaginária. Mastiga, mastiga, mastiga!",
+      instrucao: "Movimentos amplos de mastigação com os lábios fechados, dos dois lados." },
+    { id: "bocejo-leao", nome: "Bocejo do Leão", categoria: "mandibula", expressao: "bocejo", cronometro: false, botao: "Aaaaah!",
+      historia: "O Kiko acordou e dá um bocejo enorme, como um leão. Aaaaah!",
+      instrucao: "Bocejo amplo e lento, abrindo bem a boca e esticando." },
+    { id: "tunel-comboio", nome: "Túnel do Comboio", categoria: "mandibula", expressao: "abertaGrande", cronometro: true, botao: "O Comboio Passou!",
+      historia: "Um comboio vai passar pelo túnel! O Kiko segura a boca bem aberta até o comboio passar. Pouca-terra!",
+      instrucao: "Manter a boca bem aberta o máximo de tempo possível, sem esforço excessivo (cronómetro)." },
+    { id: "buldogue", nome: "O Buldogue", categoria: "mandibula", expressao: "buldogue", cronometro: false, botao: "Grrr!",
+      historia: "O Kiko faz de buldogue e põe o queixo para a frente. Que cara de mauzão! Agora volta para trás.",
+      instrucao: "Projetar a mandíbula para a frente e depois recolher, devagar, 5 vezes." },
+
+    // ---------- BOCHECHAS ----------
+    { id: "baloes-bochechas", nome: "Balões nas Bochechas", categoria: "bochechas", expressao: "bochechasCheias", cronometro: true, botao: "Aguentei!",
+      historia: "O Kiko enche as bochechas de ar como dois balões! Não deixes o ar fugir!",
+      instrucao: "Encher as bochechas de ar com os lábios bem fechados e manter (cronómetro)." },
+    { id: "bola-saltitona", nome: "Bola de Ar Saltitona", categoria: "bochechas", expressao: "bochechasAlternar", cronometro: false, botao: "Boing, Boing!",
+      historia: "O Kiko tem uma bolinha de ar que salta de uma bochecha para a outra! Boing, boing!",
+      instrucao: "Passar o ar de uma bochecha para a outra, alternando, sem o deixar sair." },
+    { id: "cara-peixe", nome: "Cara de Peixe", categoria: "bochechas", expressao: "bochechasChupadas", cronometro: true, botao: "Glub!",
+      historia: "O Kiko chupa as bochechas para dentro e faz cara de peixe! Quanto tempo aguentas?",
+      instrucao: "Sugar as bochechas para dentro, lábios em biquinho, e manter (cronómetro)." },
+    { id: "rebentar-balao", nome: "Rebentar o Balão", categoria: "bochechas", expressao: "bochechasCheias", cronometro: false, botao: "Pum!",
+      historia: "O Kiko enche as bochechas e... pum! Com as mãos, rebenta os balões!",
+      instrucao: "Bochechas cheias; a criança pressiona-as suavemente com as mãos enquanto tenta manter os lábios fechados, e depois solta o ar." },
+    { id: "sorriso-pirata", nome: "Sorriso de Pirata", categoria: "bochechas", expressao: "sorrisoLado", cronometro: false, botao: "Arrr!",
+      historia: "O Kiko é um pirata e sorri só com um lado da boca! Agora sorri com o outro lado. Arrr!",
+      instrucao: "Sorriso unilateral, alternando os lados, devagar." },
+    { id: "massagem-bochechas", nome: "Festinhas nas Bochechas", categoria: "bochechas", expressao: "massagem", cronometro: false, botao: "Que Bom!",
+      historia: "O Kiko faz festinhas nas bochechas com as mãos, em rodinhas, muito devagar.",
+      instrucao: "Massajar as bochechas com movimentos circulares suaves, com as pontas dos dedos." },
+
+    // ---------- SOPRO ----------
+    { id: "apagar-vela", nome: "Apagar a Vela", categoria: "sopro", expressao: "vela", cronometro: false, botao: "Parabéns, Kiko!",
+      historia: "Hoje é o aniversário do Kiko! Sopra com força para apagar a vela do bolo!",
+      instrucao: "Sopro forte e curto, lábios em biquinho. Pode usar uma tira de papel (ou uma vela, sempre com supervisão)." },
+    { id: "vela-danca", nome: "A Vela Dança", categoria: "sopro", expressao: "vela", cronometro: true, botao: "A Chama Dançou!",
+      historia: "Agora sopra tão devagarinho que a chama dança, dança... mas não se apaga!",
+      instrucao: "Sopro suave, contínuo e controlado; registar a duração (cronómetro)." },
+    { id: "bolas-sabao", nome: "Bolas de Sabão", categoria: "sopro", expressao: "bolhas", cronometro: false, botao: "Que Bolas Grandes!",
+      historia: "O Kiko faz bolas de sabão gigantes! Sopra devagar para não rebentarem.",
+      instrucao: "Sopro lento e prolongado; pode usar um frasco de bolas de sabão." },
+    { id: "palhinha-magica", nome: "Palhinha Mágica", categoria: "sopro", expressao: "bolhas", cronometro: true, botao: "Blub, Blub!",
+      historia: "O Kiko sopra por uma palhinha num copo de água e faz muitas bolhinhas! Blub, blub!",
+      instrucao: "Soprar por uma palhinha num copo com água, sopro contínuo (sem aspirar). Cronometrar." },
+    { id: "corrida-algodao", nome: "Corrida de Algodão", categoria: "sopro", expressao: "soprar", cronometro: false, botao: "Cheguei à Meta!",
+      historia: "Vai começar a corrida! O Kiko sopra uma bolinha de algodão pela mesa até à meta!",
+      instrucao: "Soprar uma bola de algodão ou de papel ao longo da mesa; sopro dirigido." },
+    { id: "cata-vento", nome: "O Cata-Vento", categoria: "sopro", expressao: "soprar", cronometro: true, botao: "Está a Girar!",
+      historia: "O vento está a chegar! O Kiko sopra para pôr o cata-vento a girar, girar, girar!",
+      instrucao: "Sopro contínuo para fazer girar um cata-vento (ou uma folha de papel)." },
+    { id: "apito-arbitro", nome: "O Apito do Árbitro", categoria: "sopro", expressao: "soprar", cronometro: false, botao: "Priii!",
+      historia: "Priii! O Kiko é o árbitro do jogo de futebol e apita com força!",
+      instrucao: "Sopros curtos e repetidos para um apito (ou fazer «fiu» com os lábios)." },
+
+    // ---------- PALATO MOLE ----------
+    { id: "cantor-opera", nome: "Cantor de Ópera", categoria: "palato", expressao: "cantarA", cronometro: true, botao: "Bravo!",
+      historia: "O Kiko abre a boca e canta um «Aaaaa» bem comprido, como um cantor de ópera!",
+      instrucao: "Vogal «a» prolongada com a boca bem aberta; observar a elevação do véu palatino (cronómetro)." },
+    { id: "corvo-kaka", nome: "O Corvo Ka-Ka", categoria: "palato", expressao: "kaka", cronometro: false, botao: "Ka! Ka! Ka!",
+      historia: "O Kiko faz de corvo: Ka! Ka! Ka! Cada vez mais depressa!",
+      instrucao: "Repetir «ka-ka-ka» com energia, sentindo o som lá atrás na boca." },
+    { id: "ga-go-gu", nome: "Ga, Go, Gu", categoria: "palato", expressao: "kaka", cronometro: false, botao: "Ga-Go-Gu!",
+      historia: "O Kiko brinca com sons engraçados: Ga, Go, Gu! Parece um bebé a falar!",
+      instrucao: "Repetir as sílabas «ga-go-gu» e depois alternar «ka-ga»." },
+    { id: "gargarejo", nome: "Gargarejo do Dinossauro", categoria: "palato", expressao: "gargarejo", cronometro: false, botao: "Grrrr!",
+      historia: "Grrrr! O Kiko faz gargarejo com água, como um dinossauro na banheira!",
+      instrucao: "Gargarejar com um pouco de água, cabeça inclinada para trás. Sempre com supervisão; não indicado para crianças muito pequenas." },
+    { id: "bocejo-gigante", nome: "Bocejo Gigante", categoria: "palato", expressao: "bocejo", cronometro: false, botao: "Que Sono!",
+      historia: "O Kiko boceja tão grande que até se vê a garganta! Ahhhh...",
+      instrucao: "Bocejo voluntário amplo; sentir o céu da boca mole a subir." },
+    { id: "espelho-magico", nome: "Espelho Mágico", categoria: "palato", expressao: "soprar", cronometro: false, botao: "Nariz Sequinho!",
+      historia: "O Kiko sopra pela boca com um espelho debaixo do nariz. Se o nariz não soprar, o espelho fica limpinho!",
+      instrucao: "Soprar pela boca com um espelho sob o nariz: verificar se há escape de ar nasal (o espelho não deve embaciar)." },
+
+    // ---------- RESPIRAÇÃO ----------
+    { id: "cheirar-flor", nome: "Cheirar a Flor", categoria: "respiracao", expressao: "cheirarFlor", cronometro: false, botao: "Que Cheirinho!",
+      historia: "O Kiko encontrou uma flor perfumada! Cheira devagarinho pelo nariz... hmmm!",
+      instrucao: "Inspirar lentamente pelo nariz com a boca fechada, 5 vezes." },
+    { id: "flor-vela", nome: "Flor e Vela", categoria: "respiracao", expressao: "florVela", cronometro: false, botao: "Cheirei e Soprei!",
+      historia: "Cheira a flor pelo nariz... e sopra a vela pela boca! Cheira... sopra... cheira... sopra...",
+      instrucao: "Inspirar pelo nariz e expirar devagar pela boca, alternando, 5 vezes." },
+    { id: "balao-barriga", nome: "Balão na Barriga", categoria: "respiracao", expressao: "respirar", cronometro: false, botao: "Barriga Cheia de Ar!",
+      historia: "O Kiko tem um balão na barriga! Quando ele respira, a barriga enche... e depois esvazia.",
+      instrucao: "Respiração diafragmática: mão na barriga, inspirar pelo nariz a encher a barriga, expirar devagar." },
+    { id: "comboio-vapor", nome: "Comboio a Vapor", categoria: "respiracao", expressao: "soprar", cronometro: false, botao: "Pouca-Terra!",
+      historia: "Pouca-terra, pouca-terra! O comboio do Kiko deita fumo: sopros curtinhos pela boca. Pf, pf, pf!",
+      instrucao: "Inspirar pelo nariz e fazer expirações curtas e ritmadas pela boca." },
+    { id: "dragao-pequenino", nome: "Dragão Pequenino", categoria: "respiracao", expressao: "arNariz", cronometro: false, botao: "Sou um Dragão!",
+      historia: "O Kiko fecha a boca e deixa o ar sair só pelo nariz, como um dragão pequenino!",
+      instrucao: "Expirar pelo nariz com os lábios fechados; pode pôr um espelho ou papel por baixo do nariz para ver o ar." },
+    { id: "abelhinha", nome: "A Abelhinha", categoria: "respiracao", expressao: "abelha", cronometro: true, botao: "Zzzzz!",
+      historia: "O Kiko faz de abelhinha: respira fundo e faz Zzzzzz... até o ar acabar!",
+      instrucao: "Inspirar fundo e fazer uma expiração prolongada com o som «zzz»; cronometrar." },
+
+    // ---------- RELAXAMENTO ----------
+    { id: "espreguicar", nome: "Espreguiçar", categoria: "relaxamento", expressao: "bocejo", cronometro: false, botao: "Acordei!",
+      historia: "O Kiko acordou da sesta! Espreguiça-se todo e abre a boca num grande bocejo.",
+      instrucao: "Espreguiçar o corpo e bocejar, soltando a tensão da cara e do pescoço." },
+    { id: "girassol", nome: "Cabeça de Girassol", categoria: "relaxamento", expressao: "girassol", cronometro: false, botao: "Segui o Sol!",
+      historia: "A cabeça do Kiko é um girassol que segue o sol, muito devagar, para um lado e para o outro.",
+      instrucao: "Inclinar suavemente a cabeça de um lado para o outro, sem forçar." },
+    { id: "chuva-cara", nome: "Chuva na Cara", categoria: "relaxamento", expressao: "massagem", cronometro: false, botao: "Tic, Tic, Tic!",
+      historia: "Pingos de chuva caem na cara do Kiko: tic, tic, tic! Com a pontinha dos dedos.",
+      instrucao: "Tamborilar suavemente com as pontas dos dedos nas bochechas, lábios e queixo." },
+    { id: "boneco-trapos", nome: "Boneco de Trapos", categoria: "relaxamento", expressao: "bocaSolta", cronometro: false, botao: "Fiquei Molinho!",
+      historia: "O Kiko ficou mole, mole, como um boneco de trapos. A boca fica soltinha...",
+      instrucao: "Relaxar a mandíbula, deixando a boca ligeiramente aberta e solta; abanar suavemente o queixo." },
+    { id: "estatua-feliz", nome: "Estátua Feliz", categoria: "relaxamento", expressao: "relaxado", cronometro: true, botao: "Fui uma Estátua!",
+      historia: "O Kiko fica quietinho como uma estátua, a sorrir de olhos fechados. Quanto tempo consegues?",
+      instrucao: "Ficar imóvel, com um sorriso suave e respiração calma (cronómetro)." },
+    { id: "nuvem-fofinha", nome: "Viagem na Nuvem", categoria: "relaxamento", expressao: "dormir", cronometro: true, botao: "Que Viagem!",
+      historia: "O Kiko deita-se numa nuvem fofinha e respira devagar... devagar... devagarinho.",
+      instrucao: "Sentado ou deitado, olhos fechados, respiração lenta pelo nariz durante cerca de 1 minuto." }
+];
+
+// =====================================================================
+//  4. GUARDAR DADOS
+//  Há dois "armazéns" com exatamente as mesmas funções:
+//   • ArmazemLocal    — localStorage (enquanto o FIREBASE_CONFIG tiver "COLE_AQUI")
+//   • ArmazemFirebase — Firestore (dados online)
+//
+//  Estrutura no Firestore:
+//   exercicios/{id}                    → exercícios personalizados do terapeuta
+//   pacientes/{id}                     → { nome, codigo, exercicios: [ids], periodo: {inicio, fim} | null }
+//   pacientes/{id}/conclusoes/{id}     → { exercicioId, quando, tempo, sticker }
+//   codigos/{CODIGO}                   → { pacienteId }   (a "porta" para o paciente entrar só com o código)
+// =====================================================================
+const CONFIG = window.FIREBASE_CONFIG || {};
+const MODO_FIREBASE = Boolean(CONFIG.apiKey) && !String(CONFIG.apiKey).includes("COLE");
+const VERSAO_FIREBASE = "10.12.2";
+const IDS_BASE = new Set(EXERCICIOS_BASE.map(e => e.id));
+
+// Leitura/escrita no localStorage que nunca rebenta (ex.: navegação privada)
+const LS = {
+    ler(chave, padrao) {
+        try { return JSON.parse(localStorage.getItem(chave)) ?? padrao; } catch { return padrao; }
+    },
+    gravar(chave, valor) { try { localStorage.setItem(chave, JSON.stringify(valor)); } catch { /* sem espaço/privado */ } },
+    apagar(chave) { try { localStorage.removeItem(chave); } catch { /* ignorar */ } }
+};
+
+const CH = {
+    pacientes: "macaquinho.pacientes",
+    exercicios: "macaquinho.exercicios",
+    conclusoes: "macaquinho.conclusoes",
+    pendentes: "macaquinho.pendentes",          // conclusões ainda por enviar
+    ultimoCodigo: "macaquinho.ultimoCodigo",    // para a criança não ter de escrever o código sempre
+    cache: (codigo) => "macaquinho.cache." + codigo,
+    conclusoesPaciente: (pacienteId) => "macaquinho.concl." + pacienteId   // cópia para usar sem internet
+};
+
+function guardarNaLista(chave, obj) {
+    const lista = LS.ler(chave, []);
+    const i = lista.findIndex(x => x.id === obj.id);
+    if (i >= 0) lista[i] = obj; else lista.push(obj);
+    LS.gravar(chave, lista);
+}
+
+// ---------- Armazém local (sem internet, só neste dispositivo) ----------
+const ArmazemLocal = {
+    async listarPacientes() { return LS.ler(CH.pacientes, []); },
+    async codigoLivre(codigo, pacienteId) {
+        return !LS.ler(CH.pacientes, []).some(p => p.codigo === codigo && p.id !== pacienteId);
+    },
+    async guardarPaciente(p) { guardarNaLista(CH.pacientes, p); },
+    async apagarPaciente(p) {
+        LS.gravar(CH.pacientes, LS.ler(CH.pacientes, []).filter(x => x.id !== p.id));
+        LS.gravar(CH.conclusoes, LS.ler(CH.conclusoes, []).filter(c => c.pacienteId !== p.id));
+    },
+    async listarExercicios() { return LS.ler(CH.exercicios, []); },
+    async guardarExercicio(e) { guardarNaLista(CH.exercicios, e); },
+    async apagarExercicio(id) { LS.gravar(CH.exercicios, LS.ler(CH.exercicios, []).filter(x => x.id !== id)); },
+
+    async obterPacientePorCodigo(codigo) {
+        const paciente = LS.ler(CH.pacientes, []).find(p => p.codigo === codigo);
+        if (!paciente) return null;
+        const ids = new Set(paciente.exercicios || []);
+        return { paciente, personalizados: LS.ler(CH.exercicios, []).filter(e => ids.has(e.id)) };
+    },
+    async registarConclusao(pacienteId, c) { guardarNaLista(CH.conclusoes, { ...c, pacienteId }); },
+    async listarConclusoes(pacienteId) { return LS.ler(CH.conclusoes, []).filter(c => c.pacienteId === pacienteId); }
+};
+
+// ---------- Armazém Firebase (Firestore) ----------
+function criarArmazemFirebase({ db, fs }) {
+    const { collection, doc, getDoc, getDocs, setDoc, deleteDoc, writeBatch, Timestamp } = fs;
+    const comId = (d) => ({ id: d.id, ...d.data() });
+    const semId = ({ id, personalizado, ...resto }) => resto;
+
+    return {
+        async listarPacientes() {
+            return (await getDocs(collection(db, "pacientes"))).docs.map(comId);
+        },
+        async codigoLivre(codigo, pacienteId) {
+            const d = await getDoc(doc(db, "codigos", codigo));
+            return !d.exists() || d.data().pacienteId === pacienteId;
+        },
+        // Grava o paciente e o seu código ao mesmo tempo (tudo ou nada)
+        async guardarPaciente(p, codigoAntigo) {
+            const lote = writeBatch(db);
+            lote.set(doc(db, "pacientes", p.id), semId(p));
+            lote.set(doc(db, "codigos", p.codigo), { pacienteId: p.id });
+            if (codigoAntigo && codigoAntigo !== p.codigo) lote.delete(doc(db, "codigos", codigoAntigo));
+            await lote.commit();
+        },
+        // Apaga o paciente, o código e todas as conclusões (em lotes de 450)
+        async apagarPaciente(p) {
+            const conclusoes = await getDocs(collection(db, "pacientes", p.id, "conclusoes"));
+            const refs = [...conclusoes.docs.map(d => d.ref), doc(db, "codigos", p.codigo), doc(db, "pacientes", p.id)];
+            for (let i = 0; i < refs.length; i += 450) {
+                const lote = writeBatch(db);
+                refs.slice(i, i + 450).forEach(r => lote.delete(r));
+                await lote.commit();
+            }
+        },
+        async listarExercicios() {
+            return (await getDocs(collection(db, "exercicios"))).docs.map(comId);
+        },
+        async guardarExercicio(e) { await setDoc(doc(db, "exercicios", e.id), semId(e)); },
+        async apagarExercicio(id) { await deleteDoc(doc(db, "exercicios", id)); },
+
+        // Usado pelo paciente: código → paciente → exercícios personalizados atribuídos
+        async obterPacientePorCodigo(codigo) {
+            const c = await getDoc(doc(db, "codigos", codigo));
+            if (!c.exists()) return null;
+            const p = await getDoc(doc(db, "pacientes", c.data().pacienteId));
+            if (!p.exists()) return null;
+            const paciente = comId(p);
+            const idsPersonalizados = (paciente.exercicios || []).filter(id => !IDS_BASE.has(id));
+            const docs = await Promise.all(idsPersonalizados.map(id => getDoc(doc(db, "exercicios", id)).catch(() => null)));
+            return { paciente, personalizados: docs.filter(d => d?.exists()).map(comId) };
+        },
+        async registarConclusao(pacienteId, c) {
+            await setDoc(doc(db, "pacientes", pacienteId, "conclusoes", c.id), {
+                exercicioId: c.exercicioId,
+                quando: Timestamp.fromMillis(c.quando),
+                tempo: c.tempo ?? null,
+                sticker: c.sticker
+            });
+        },
+        async listarConclusoes(pacienteId) {
+            const s = await getDocs(collection(db, "pacientes", pacienteId, "conclusoes"));
+            return s.docs.map(d => ({ id: d.id, ...d.data(), quando: d.data().quando?.toMillis?.() ?? null }));
+        }
+    };
+}
+
+// ---------- Login do terapeuta ----------
+const AuthLocal = {
+    async utilizador() { try { return sessionStorage.getItem("macaquinho.terapeuta"); } catch { return null; } },
+    async entrar(email, pass) {
+        if (!/^\S+@\S+\.\S+$/.test(email)) throw new Error("Escreva um email válido.");
+        if (pass.length < 6) throw new Error("A palavra-passe tem de ter pelo menos 6 caracteres.");
+        try { sessionStorage.setItem("macaquinho.terapeuta", email); } catch { /* ignorar */ }
+        return email;
+    },
+    async sair() { try { sessionStorage.removeItem("macaquinho.terapeuta"); } catch { /* ignorar */ } },
+    async recuperar() { throw new Error("No modo local não há recuperação de palavra-passe."); }
+};
+
+function criarAuthFirebase({ auth, au }) {
+    // Espera que o Firebase diga se já havia sessão iniciada neste aparelho
+    const pronto = new Promise(resolve => {
+        const parar = au.onAuthStateChanged(auth, () => { parar(); resolve(); });
+    });
+    return {
+        async utilizador() { await pronto; return auth.currentUser?.email || null; },
+        async entrar(email, pass) { await au.signInWithEmailAndPassword(auth, email, pass); return email; },
+        async sair() { await au.signOut(auth); },
+        async recuperar(email) { await au.sendPasswordResetEmail(auth, email); }
+    };
+}
+
+// Mensagens de erro do Firebase em português
+function traduzirErro(e) {
+    const mensagens = {
+        "auth/invalid-credential": "Email ou palavra-passe errados.",
+        "auth/wrong-password": "Email ou palavra-passe errados.",
+        "auth/user-not-found": "Email ou palavra-passe errados.",
+        "auth/invalid-email": "Escreva um email válido.",
+        "auth/missing-password": "Escreva a palavra-passe.",
+        "auth/missing-email": "Escreva o email.",
+        "auth/too-many-requests": "Demasiadas tentativas. Espere uns minutos e tente de novo.",
+        "auth/network-request-failed": "Sem ligação à internet.",
+        "permission-denied": "Sem permissão. Confirme se o seu UID está nas regras do Firestore.",
+        "unavailable": "Sem ligação à internet. Tente novamente."
+    };
+    if (String(e?.code).startsWith("auth/api-key") || e?.code === "auth/invalid-api-key") {
+        return "A configuração do Firebase está errada. Confirme os valores colados no topo do ficheiro.";
+    }
+    return mensagens[e?.code] || e?.message || "Ocorreu um erro.";
+}
+
+// ---------- Arranque dos serviços (Firebase carregado por CDN, módulos ES) ----------
+// Carregamos o Firebase com import() dinâmico: se não houver internet,
+// o jogo arranca na mesma e o paciente usa a cópia guardada no aparelho.
+let promessaServicos = null;
+function servicos() {
+    if (!promessaServicos) {
+        promessaServicos = (async () => {
+            if (!MODO_FIREBASE) return { armazem: ArmazemLocal, auth: AuthLocal };
+            const base = `https://www.gstatic.com/firebasejs/${VERSAO_FIREBASE}/`;
+            const [app, fs, au] = await Promise.all([
+                import(base + "firebase-app.js"),
+                import(base + "firebase-firestore.js"),
+                import(base + "firebase-auth.js")
+            ]);
+            const fbApp = app.initializeApp(CONFIG);
+            return {
+                armazem: criarArmazemFirebase({ db: fs.getFirestore(fbApp), fs }),
+                auth: criarAuthFirebase({ auth: au.getAuth(fbApp), au })
+            };
+        })().catch(e => { promessaServicos = null; throw e; });
+    }
+    return promessaServicos;
+}
+const dados = async () => (await servicos()).armazem;
+const autenticacao = async () => (await servicos()).auth;
+
+// Desiste de esperar ao fim de "ms" milissegundos (útil quando não há rede)
+const comLimite = (promessa, ms) => Promise.race([
+    promessa,
+    new Promise((_, rejeitar) => setTimeout(() => rejeitar(Object.assign(new Error("Sem ligação à internet."), { code: "unavailable" })), ms))
+]);
+
+// =====================================================================
+//  5. UTILITÁRIOS
+// =====================================================================
+const $ = (sel) => document.querySelector(sel);
+const $$ = (sel) => document.querySelectorAll(sel);
+
+// Protege texto escrito pelo utilizador antes de o pôr no HTML
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+// Tira acentos e põe em minúsculas (para pesquisar "lingua" e encontrar "língua")
+const normalizar = (s) => String(s ?? "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+
+const novoId = (prefixo) => prefixo + "-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+
+function mostrarEcra(id) {
+    $$(".ecra").forEach(e => e.classList.toggle("ativo", e.id === id));
+    window.scrollTo(0, 0);
+}
+
+let temporizadorAviso;
+function aviso(msg) {
+    const el = $("#aviso");
+    el.textContent = msg;
+    el.classList.add("visivel");
+    clearTimeout(temporizadorAviso);
+    temporizadorAviso = setTimeout(() => el.classList.remove("visivel"), 2600);
+}
+
+// Janela de confirmação (devolve true se a pessoa disser que sim)
+function confirmar(mensagem) {
+    return new Promise(resolve => {
+        const dlg = $("#dlg-confirmar");
+        $("#confirmar-msg").textContent = mensagem;
+        dlg.querySelectorAll("button").forEach(b => b.onclick = () => { dlg.close(); resolve(b.value === "sim"); });
+        dlg.oncancel = () => resolve(false);
+        dlg.showModal();
+    });
+}
+
+// =====================================================================
+//  6. ESTADO DA ÁREA DO TERAPEUTA
+// =====================================================================
+const estado = {
+    personalizados: [],    // exercícios criados pelo terapeuta
+    pacientes: [],
+    categoria: "todas",
+    pesquisa: ""
+};
+
+const todosExercicios = () => [...EXERCICIOS_BASE, ...estado.personalizados];
+const procurarExercicio = (id) => todosExercicios().find(e => e.id === id);
+
+function listaFiltrada() {
+    const termo = normalizar(estado.pesquisa.trim());
+    return todosExercicios().filter(ex =>
+        (estado.categoria === "todas" || ex.categoria === estado.categoria) &&
+        (!termo || normalizar(`${ex.nome} ${ex.historia} ${ex.instrucao} ${CATEGORIAS[ex.categoria]?.nome}`).includes(termo)));
+}
+
+function etiquetaCategoria(chave) {
+    const c = CATEGORIAS[chave] || { nome: chave, emoji: "⭐", cor: "#eee", texto: "#555" };
+    return `<span class="badge" style="background:${c.cor};color:${c.texto}">${c.emoji} ${esc(c.nome)}</span>`;
+}
+
+function renderChips() {
+    const contagem = {};
+    todosExercicios().forEach(e => contagem[e.categoria] = (contagem[e.categoria] || 0) + 1);
+    const chip = (chave, texto) =>
+        `<button class="chip${estado.categoria === chave ? " ativo" : ""}" data-acao="filtro-cat" data-cat="${chave}">${texto}</button>`;
+    $("#chips-categorias").innerHTML = chip("todas", `Todas (${todosExercicios().length})`) +
+        Object.entries(CATEGORIAS).map(([k, c]) => chip(k, `${c.emoji} ${c.nome} (${contagem[k] || 0})`)).join("");
+}
+
+function cartaoExercicio(ex) {
+    const id = esc(ex.id);
+    return `<article class="ex-cartao">
+        <div class="mini">${macacoSVG(ex.expressao)}</div>
+        <div class="etiquetas">
+            ${etiquetaCategoria(ex.categoria)}
+            ${ex.cronometro ? `<span class="badge badge-tempo">⏱️ Cronómetro</span>` : ""}
+            ${ex.personalizado ? `<span class="badge badge-meu">⭐ Meu</span>` : ""}
+        </div>
+        <h3>${esc(ex.nome)}</h3>
+        <p class="ex-historia">${esc(ex.historia)}</p>
+        ${ex.instrucao ? `<details><summary>Instrução para o terapeuta</summary><p>${esc(ex.instrucao)}</p></details>` : ""}
+        <div class="ex-acoes">
+            <button class="btn btn-verde btn-pequeno" data-acao="experimentar" data-id="${id}">▶️ Experimentar</button>
+            ${ex.personalizado
+                ? `<button class="btn btn-branco btn-pequeno" data-acao="editar-ex" data-id="${id}" aria-label="Editar">✏️</button>
+                   <button class="btn btn-branco btn-pequeno" data-acao="apagar-ex" data-id="${id}" aria-label="Apagar">🗑️</button>`
+                : `<button class="btn btn-branco btn-pequeno" data-acao="duplicar-ex" data-id="${id}" title="Criar uma cópia personalizável">📄 Duplicar</button>`}
+        </div>
+    </article>`;
+}
+
+function renderExercicios() {
+    renderChips();
+    const lista = listaFiltrada();
+    $("#contador-ex").textContent = lista.length === 1 ? "1 exercício" : `${lista.length} exercícios`;
+    $("#grelha-ex").innerHTML = lista.map(cartaoExercicio).join("") ||
+        `<p class="vazio">Nenhum exercício encontrado. 🙈</p>`;
+}
+
+function renderPacientes() {
+    const lista = [...estado.pacientes].sort((a, b) => a.nome.localeCompare(b.nome, "pt"));
+    $("#contador-pac").textContent = lista.length === 1 ? "1 paciente" : `${lista.length} pacientes`;
+    $("#grelha-pac").innerHTML = lista.map(p => `
+        <article class="pac-cartao">
+            <div class="pac-avatar">🐵</div>
+            <div class="pac-nome">${esc(p.nome)}</div>
+            <div class="pac-codigo">${esc(p.codigo)}</div>
+            <div class="ex-historia">
+                📋 ${(p.exercicios || []).length} exercício(s) atribuído(s)<br>
+                🗓️ ${esc(textoPeriodo(p.periodo))}
+            </div>
+            <div class="ex-acoes" style="width:100%">
+                <button class="btn btn-verde btn-pequeno" data-acao="atribuir" data-id="${esc(p.id)}">📋 Escolher exercícios</button>
+                <button class="btn btn-azul btn-pequeno" data-acao="progresso" data-id="${esc(p.id)}">📊 Progresso</button>
+                <button class="btn btn-branco btn-pequeno" data-acao="copiar-codigo" data-codigo="${esc(p.codigo)}">📋 Copiar código</button>
+                <button class="btn btn-branco btn-pequeno" data-acao="editar-pac" data-id="${esc(p.id)}" aria-label="Editar">✏️</button>
+                <button class="btn btn-branco btn-pequeno" data-acao="apagar-pac" data-id="${esc(p.id)}" aria-label="Apagar">🗑️</button>
+            </div>
+        </article>`).join("") ||
+        `<p class="vazio">Ainda não há pacientes. Carregue em «➕ Novo paciente». 🐒</p>`;
+}
+
+async function abrirAdmin() {
+    const armazem = await dados();
+    $("#admin-quem").textContent = "Sessão: " + await (await autenticacao()).utilizador();
+    $("#admin-modo").textContent = MODO_FIREBASE ? "☁️ Dados online (Firebase)" : "💾 Modo local — só neste dispositivo";
+    const [personalizados, pacientes] = await Promise.all([armazem.listarExercicios(), armazem.listarPacientes()]);
+    estado.personalizados = personalizados.map(e => ({ ...e, personalizado: true }));
+    estado.pacientes = pacientes;
+    renderExercicios();
+    renderPacientes();
+    mostrarEcra("ecra-admin");
+}
+
+// Abre a área do terapeuta (ou o login, se ainda não entrou)
+async function irTerapeuta() {
+    try {
+        if (await (await autenticacao()).utilizador()) return await abrirAdmin();
+    } catch (e) {
+        $("#login-erro").textContent = traduzirErro(e);
+    }
+    mostrarEcra("ecra-login");
+}
+
+// ---------- Datas e períodos ----------
+const isoLocal = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+const hojeISO = () => isoLocal(new Date());
+
+// Segunda a domingo da semana atual (desvio 0) ou seguinte (desvio 1)
+function semana(desvio = 0) {
+    const d = new Date();
+    const segunda = new Date(d.getFullYear(), d.getMonth(), d.getDate() - ((d.getDay() + 6) % 7) + 7 * desvio);
+    const domingo = new Date(segunda.getFullYear(), segunda.getMonth(), segunda.getDate() + 6);
+    return { inicio: isoLocal(segunda), fim: isoLocal(domingo) };
+}
+
+const dataBonita = (iso) => new Date(iso + "T00:00").toLocaleDateString("pt-PT", { day: "numeric", month: "long" });
+
+function textoPeriodo(periodo) {
+    if (!periodo) return "Sem prazo";
+    if (!periodo.inicio || !periodo.fim) return "Escolha as datas";
+    return `De ${dataBonita(periodo.inicio)} a ${dataBonita(periodo.fim)}`;
+}
+
+// "ativo", "futuro" (ainda não começou) ou "terminado"
+function estadoPeriodo(periodo) {
+    if (!periodo) return "ativo";
+    const hoje = hojeISO();
+    return hoje < periodo.inicio ? "futuro" : hoje > periodo.fim ? "terminado" : "ativo";
+}
+
+// =====================================================================
+//  7. FORMULÁRIO DE EXERCÍCIO PERSONALIZADO
+// =====================================================================
+function preencherSelects() {
+    $("#ex-categoria").innerHTML = Object.entries(CATEGORIAS)
+        .map(([k, c]) => `<option value="${k}">${c.emoji} ${c.nome}</option>`).join("");
+    $("#ex-expressao").innerHTML = Object.entries(EXPRESSOES)
+        .map(([k, e]) => `<option value="${k}">${e.nome}</option>`).join("");
+}
+
+function atualizarPrevia() { $("#ex-previa").innerHTML = macacoSVG($("#ex-expressao").value); }
+
+// Abre o formulário: vazio (novo), com um exercício para editar, ou como cópia
+function abrirFormExercicio(ex = null, copia = false) {
+    $("#dlg-ex-titulo").textContent = !ex ? "Novo exercício" : copia ? "Duplicar exercício" : "Editar exercício";
+    $("#ex-id").value = ex && !copia ? ex.id : "";
+    $("#ex-nome").value = ex ? ex.nome + (copia ? " (cópia)" : "") : "";
+    $("#ex-categoria").value = ex?.categoria || (estado.categoria !== "todas" ? estado.categoria : "labios");
+    $("#ex-expressao").value = ex?.expressao || "sorriso";
+    $("#ex-historia").value = ex?.historia || "";
+    $("#ex-instrucao").value = ex?.instrucao || "";
+    $("#ex-botao").value = ex?.botao || "";
+    $("#ex-cronometro").checked = !!ex?.cronometro;
+    $("#ex-erro").textContent = "";
+    atualizarPrevia();
+    $("#dlg-exercicio").showModal();
+}
+
+async function guardarFormExercicio() {
+    const nome = $("#ex-nome").value.trim();
+    const historia = $("#ex-historia").value.trim();
+    if (!nome || !historia) { $("#ex-erro").textContent = "Preencha o nome e a história."; return; }
+
+    const ex = {
+        id: $("#ex-id").value || novoId("p"),
+        nome,
+        categoria: $("#ex-categoria").value,
+        expressao: $("#ex-expressao").value,
+        historia,
+        instrucao: $("#ex-instrucao").value.trim(),
+        botao: $("#ex-botao").value.trim() || "Consegui!",
+        cronometro: $("#ex-cronometro").checked
+    };
+    await (await dados()).guardarExercicio(ex);
+    const i = estado.personalizados.findIndex(e => e.id === ex.id);
+    if (i >= 0) estado.personalizados[i] = { ...ex, personalizado: true };
+    else estado.personalizados.push({ ...ex, personalizado: true });
+    $("#dlg-exercicio").close();
+    renderExercicios();
+    aviso("Exercício guardado! ⭐");
+}
+
+// =====================================================================
+//  8. FORMULÁRIO DE PACIENTE
+// =====================================================================
+// Código curto: primeiro nome sem acentos + 4 algarismos (ex.: JOAO-4821)
+function gerarCodigo(nome) {
+    const usados = new Set(estado.pacientes.filter(p => p.id !== $("#pac-id").value).map(p => p.codigo));
+    const base = normalizar(nome).toUpperCase().replace(/[^A-Z]/g, "").slice(0, 8) || "KIKO";
+    let codigo;
+    do { codigo = `${base}-${1000 + Math.floor(Math.random() * 9000)}`; } while (usados.has(codigo));
+    return codigo;
+}
+
+function abrirFormPaciente(p = null) {
+    $("#dlg-pac-titulo").textContent = p ? "Editar paciente" : "Novo paciente";
+    $("#pac-id").value = p?.id || "";
+    $("#pac-nome").value = p?.nome || "";
+    $("#pac-codigo").textContent = p?.codigo || gerarCodigo("");
+    $("#pac-aviso-codigo").hidden = true;
+    $("#pac-erro").textContent = "";
+    $("#dlg-paciente").showModal();
+}
+
+async function guardarFormPaciente() {
+    const escrito = $("#pac-nome").value.trim();
+    const nome = escrito.split(/\s+/)[0];           // guarda só o primeiro nome
+    if (!nome) { $("#pac-erro").textContent = "Escreva o primeiro nome."; return; }
+
+    const id = $("#pac-id").value;
+    const anterior = estado.pacientes.find(p => p.id === id);
+    const paciente = {
+        id: id || novoId("pac"),
+        nome: nome.charAt(0).toUpperCase() + nome.slice(1),
+        codigo: $("#pac-codigo").textContent,
+        exercicios: anterior?.exercicios || [],
+        periodo: anterior?.periodo || null
+    };
+    const armazem = await dados();
+    if (!await armazem.codigoLivre(paciente.codigo, paciente.id)) {
+        $("#pac-erro").textContent = "Este código já está a ser usado. Carregue em «Gerar outro».";
+        return;
+    }
+    await armazem.guardarPaciente(paciente, anterior?.codigo);
+    estado.pacientes = anterior ? estado.pacientes.map(p => p.id === id ? paciente : p) : [...estado.pacientes, paciente];
+    $("#dlg-paciente").close();
+    renderPacientes();
+    aviso(escrito.includes(" ") ? "Guardado — só com o primeiro nome. 🔒" : "Paciente guardado! 🐵");
+}
+
+// =====================================================================
+//  8b. ATRIBUIR EXERCÍCIOS A UM PACIENTE
+// =====================================================================
+const atribuicao = { paciente: null, escolhidos: new Set(), visiveis: [] };
+
+function abrirAtribuicao(p) {
+    atribuicao.paciente = p;
+    atribuicao.escolhidos = new Set(p.exercicios || []);
+    $("#atr-nome").textContent = p.nome;
+    $("#atr-pesquisa").value = "";
+    $("#atr-categoria").value = "todas";
+    $("#atr-periodo").value = p.periodo ? "datas" : "";
+    $("#atr-inicio").value = p.periodo?.inicio || "";
+    $("#atr-fim").value = p.periodo?.fim || "";
+    $("#form-atribuir .erro").textContent = "";
+    atualizarPeriodoUI();
+    renderAtribuicao();
+    $("#dlg-atribuir").showModal();
+}
+
+function atualizarPeriodoUI() {
+    const tipo = $("#atr-periodo").value;
+    if (tipo === "esta" || tipo === "proxima") {
+        const s = semana(tipo === "proxima" ? 1 : 0);
+        $("#atr-inicio").value = s.inicio;
+        $("#atr-fim").value = s.fim;
+    }
+    $("#atr-datas").hidden = tipo !== "datas";
+    $("#atr-periodo-texto").textContent = tipo
+        ? "🗓️ " + textoPeriodo({ inicio: $("#atr-inicio").value, fim: $("#atr-fim").value })
+        : "Os exercícios ficam sempre disponíveis para a criança.";
+}
+
+function renderAtribuicao() {
+    const termo = normalizar($("#atr-pesquisa").value.trim());
+    const cat = $("#atr-categoria").value;
+    const lista = todosExercicios().filter(ex =>
+        (cat === "todas" || (cat === "escolhidos" ? atribuicao.escolhidos.has(ex.id) : ex.categoria === cat)) &&
+        (!termo || normalizar(`${ex.nome} ${ex.historia}`).includes(termo)));
+    atribuicao.visiveis = lista.map(ex => ex.id);
+
+    const linha = (ex) => `
+        <label class="linha-ex">
+            <input type="checkbox" value="${esc(ex.id)}" ${atribuicao.escolhidos.has(ex.id) ? "checked" : ""}>
+            <span class="mini">${macacoSVG(ex.expressao)}</span>
+            <span><b>${esc(ex.nome)}</b>
+                <small>${ex.cronometro ? "⏱️ Cronómetro " : ""}${ex.personalizado ? "⭐ Meu" : ""}</small></span>
+        </label>`;
+    $("#atr-lista").innerHTML = Object.entries(CATEGORIAS).map(([k, c]) => {
+        const doGrupo = lista.filter(ex => ex.categoria === k);
+        return doGrupo.length ? `<p class="cat-titulo">${c.emoji} ${c.nome}</p>` + doGrupo.map(linha).join("") : "";
+    }).join("") || `<p class="vazio">Nenhum exercício encontrado. 🙈</p>`;
+    atualizarContadorAtribuicao();
+}
+
+function atualizarContadorAtribuicao() {
+    const n = atribuicao.escolhidos.size;
+    $("#atr-contador").textContent = n === 1 ? "1 escolhido" : `${n} escolhidos`;
+}
+
+async function guardarAtribuicao() {
+    const erro = $("#form-atribuir .erro");
+    let periodo = null;
+    if ($("#atr-periodo").value) {
+        const inicio = $("#atr-inicio").value, fim = $("#atr-fim").value;
+        if (!inicio || !fim || inicio > fim) { erro.textContent = "Escolha datas válidas (o início antes do fim)."; return; }
+        periodo = { inicio, fim };
+    }
+    // Mantém a ordem da biblioteca e ignora exercícios que já foram apagados
+    const exercicios = todosExercicios().map(ex => ex.id).filter(id => atribuicao.escolhidos.has(id));
+    const p = { ...atribuicao.paciente, exercicios, periodo };
+    await (await dados()).guardarPaciente(p);
+    estado.pacientes = estado.pacientes.map(x => x.id === p.id ? p : x);
+    $("#dlg-atribuir").close();
+    renderPacientes();
+    aviso(`${exercicios.length} exercício(s) para ${p.nome}! 📋`);
+}
+
+// =====================================================================
+//  8b2. PAINEL DE PROGRESSO DE UM PACIENTE (terapeuta)
+// =====================================================================
+const progresso = { paciente: null, conclusoes: [] };
+
+const dataHora = (ms) => new Date(ms).toLocaleString("pt-PT", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
+const dataCurta = (iso) => new Date(iso + "T00:00").toLocaleDateString("pt-PT", { day: "numeric", month: "short" });
+const formatarTempo = (ms) => ms == null ? "" : (ms / 1000).toFixed(2).replace(".", ",") + " s";
+
+async function abrirProgresso(p) {
+    progresso.paciente = p;
+    progresso.conclusoes = [];
+    $("#prog-nome").textContent = p.nome;
+    $("#prog-codigo").textContent = "Código: " + p.codigo;
+    $("#prog-filtro").innerHTML =
+        (p.periodo ? `<option value="periodo">Período atribuído (${esc(textoPeriodo(p.periodo))})</option>` : "") +
+        `<option value="esta">Esta semana</option>
+         <option value="passada">Semana passada</option>
+         <option value="30">Últimos 30 dias</option>
+         <option value="tudo">Todo o histórico</option>
+         <option value="datas">Escolher datas…</option>`;
+    $("#prog-filtro").value = p.periodo ? "periodo" : "esta";
+    $("#prog-datas").hidden = true;
+    ["#prog-semanas", "#prog-exercicios", "#prog-historico", "#prog-intervalo"].forEach(s => $(s).innerHTML = "");
+    $("#prog-resumo").innerHTML = `<p class="vazio">A carregar... 🐒</p>`;
+    mostrarEcra("ecra-progresso");
+
+    progresso.conclusoes = (await (await dados()).listarConclusoes(p.id)).sort((a, b) => a.quando - b.quando);
+    renderProgresso();
+}
+
+// Devolve { inicio, fim } (datas "AAAA-MM-DD") ou null para "todo o histórico"
+function intervaloProgresso() {
+    const hoje = new Date();
+    switch ($("#prog-filtro").value) {
+        case "periodo": return progresso.paciente.periodo;
+        case "esta": return semana(0);
+        case "passada": return semana(-1);
+        case "30": return { inicio: isoLocal(new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate() - 29)), fim: isoLocal(hoje) };
+        case "datas": {
+            const inicio = $("#prog-inicio").value, fim = $("#prog-fim").value;
+            return inicio && fim && inicio <= fim ? { inicio, fim } : null;
+        }
+        default: return null;
+    }
+}
+
+// Semanas (de segunda a domingo) dentro do intervalo, da mais recente para a mais antiga (máx. 26)
+function semanasDe(intervalo) {
+    const primeira = progresso.conclusoes[0];
+    const inicio = intervalo?.inicio || (primeira ? isoLocal(new Date(primeira.quando)) : hojeISO());
+    const fim = intervalo?.fim || hojeISO();
+    const segundaDe = (iso) => { const d = new Date(iso + "T00:00"); d.setDate(d.getDate() - (d.getDay() + 6) % 7); return d; };
+    const limite = segundaDe(inicio);
+    const semanas = [];
+    for (let d = segundaDe(fim); d >= limite && semanas.length < 26; d.setDate(d.getDate() - 7)) {
+        const domingo = new Date(d);
+        domingo.setDate(d.getDate() + 6);
+        semanas.push({ inicio: isoLocal(d), fim: isoLocal(domingo) });
+    }
+    return semanas;
+}
+
+function renderProgresso() {
+    const p = progresso.paciente;
+    const intervalo = intervaloProgresso();
+    const lista = progresso.conclusoes.filter(c => dentroDe(intervalo, c));
+    const atribuidos = p.exercicios || [];
+    const feitosIds = new Set(lista.map(c => c.exercicioId));
+    const feitosAtribuidos = atribuidos.filter(id => feitosIds.has(id)).length;
+    const ultima = progresso.conclusoes.at(-1);
+
+    $("#prog-intervalo").textContent = `🗓️ A ver: ${intervalo ? textoPeriodo(intervalo) : "todo o histórico"} · ` +
+        `Período atribuído: ${textoPeriodo(p.periodo)} · ${atribuidos.length} exercício(s) atribuído(s)`;
+
+    // Quadrados de resumo
+    const tile = (valor, texto) => `<div class="tile"><b>${esc(valor)}</b>${texto}</div>`;
+    $("#prog-resumo").innerHTML =
+        tile(`${feitosAtribuidos} de ${atribuidos.length}`, "exercícios atribuídos feitos") +
+        tile(lista.length, "conclusões neste período") +
+        tile(progresso.conclusoes.length, "stickers no total ⭐") +
+        tile(ultima ? new Date(ultima.quando).toLocaleDateString("pt-PT") : "—", "último treino");
+
+    // Vista semanal: "3 de 6 concluídos"
+    const estaSemana = semana(0).inicio;
+    $("#prog-semanas").innerHTML = semanasDe(intervalo).map(s => {
+        const ids = new Set(progresso.conclusoes.filter(c => dentroDe(s, c)).map(c => c.exercicioId));
+        const n = atribuidos.filter(id => ids.has(id)).length;
+        const pct = atribuidos.length ? (n / atribuidos.length) * 100 : 0;
+        return `<div class="semana-linha">
+            <span>${dataCurta(s.inicio)} – ${dataCurta(s.fim)}${s.inicio === estaSemana ? " (esta semana)" : ""}</span>
+            <div class="barra-grande"><div style="width:${pct}%"></div></div>
+            <span>${n} de ${atribuidos.length} concluídos</span>
+        </div>`;
+    }).join("") || `<p class="vazio">Sem semanas para mostrar.</p>`;
+
+    // Tabela por exercício: atribuídos + outros que tenham sido feitos no período
+    const ids = [...atribuidos, ...[...feitosIds].filter(id => !atribuidos.includes(id))];
+    $("#prog-exercicios").innerHTML = `
+        <tr><th>Exercício</th><th>Atribuído</th><th>Vezes</th><th>Última vez</th><th>Melhor tempo<br><small>(o mais longo)</small></th></tr>` +
+        (ids.map(id => {
+            const ex = procurarExercicio(id);
+            const doEx = lista.filter(c => c.exercicioId === id);
+            const tempos = doEx.map(c => c.tempo).filter(t => typeof t === "number");
+            return `<tr>
+                <td>${ex ? `${CATEGORIAS[ex.categoria]?.emoji || ""} ${esc(ex.nome)}` : "<i>(exercício apagado)</i>"}</td>
+                <td class="num">${atribuidos.includes(id) ? "✅" : "—"}</td>
+                <td class="num">${doEx.length}</td>
+                <td>${doEx.length ? dataHora(doEx.at(-1).quando) : "—"}</td>
+                <td class="num">${tempos.length ? formatarTempo(Math.max(...tempos)) : (ex?.cronometro ? "—" : "")}</td>
+            </tr>`;
+        }).join("") || `<tr><td colspan="5" class="vazio">Ainda não há exercícios atribuídos.</td></tr>`);
+
+    // Histórico: cada conclusão com data e hora
+    $("#prog-historico").innerHTML = `<tr><th>Data e hora</th><th>Exercício</th><th>Tempo</th><th>Sticker</th></tr>` +
+        ([...lista].reverse().map(c => `<tr>
+            <td>${dataHora(c.quando)}</td>
+            <td>${esc(procurarExercicio(c.exercicioId)?.nome || "(exercício apagado)")}</td>
+            <td>${formatarTempo(c.tempo)}</td>
+            <td class="num">${esc(c.sticker || "")}</td>
+        </tr>`).join("") || `<tr><td colspan="4" class="vazio">Sem conclusões neste período. 🐒</td></tr>`);
+}
+
+function atualizarFiltroProgresso() {
+    const escolherDatas = $("#prog-filtro").value === "datas";
+    if (escolherDatas && !$("#prog-inicio").value) {
+        const s = semana(0);
+        $("#prog-inicio").value = s.inicio;
+        $("#prog-fim").value = s.fim;
+    }
+    $("#prog-datas").hidden = !escolherDatas;
+    renderProgresso();
+}
+
+// Exporta as conclusões do período para um ficheiro CSV (abre no Excel; separador ";")
+function exportarCSV() {
+    const p = progresso.paciente;
+    const intervalo = intervaloProgresso();
+    const lista = progresso.conclusoes.filter(c => dentroDe(intervalo, c));
+    const celula = (v) => {
+        let s = String(v ?? "");
+        if (/^[=+\-@]/.test(s)) s = "'" + s;                   // evita fórmulas no Excel
+        return /[;"\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+    const linhas = [
+        ["Paciente", p.nome], ["Código", p.codigo],
+        ["Período", intervalo ? textoPeriodo(intervalo) : "Todo o histórico"],
+        ["Exercícios atribuídos", (p.exercicios || []).length], ["Total de stickers", progresso.conclusoes.length],
+        [],
+        ["Data", "Hora", "Exercício", "Categoria", "Tempo (segundos)", "Sticker"],
+        ...lista.map(c => {
+            const ex = procurarExercicio(c.exercicioId);
+            const d = new Date(c.quando);
+            return [
+                d.toLocaleDateString("pt-PT"),
+                d.toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" }),
+                ex?.nome || c.exercicioId,
+                CATEGORIAS[ex?.categoria]?.nome || "",
+                c.tempo == null ? "" : (c.tempo / 1000).toFixed(2).replace(".", ","),
+                c.sticker || ""
+            ];
+        })
+    ];
+    const csv = "﻿" + linhas.map(l => l.map(celula).join(";")).join("\r\n");   // ﻿ = acentos certos no Excel
+    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+    const a = Object.assign(document.createElement("a"), { href: url, download: `progresso_${p.codigo}_${hojeISO()}.csv` });
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    aviso("Ficheiro CSV descarregado! ⬇️");
+}
+
+// =====================================================================
+//  8c. SINCRONIZAÇÃO DAS CONCLUSÕES (funciona sem internet)
+//  Cada conclusão vai primeiro para uma fila no aparelho e só sai da
+//  fila quando o Firestore confirmar que a recebeu. Se não houver
+//  internet, fica à espera e é enviada quando a ligação voltar.
+// =====================================================================
+const Sincronizacao = {
+    aEnviar: new Set(),
+    pendentes() { return LS.ler(CH.pendentes, []); },
+    adicionar(pacienteId, conclusao) {
+        LS.gravar(CH.pendentes, [...this.pendentes(), { pacienteId, conclusao }]);
+        this.enviar();
+    },
+    remover(id) { LS.gravar(CH.pendentes, this.pendentes().filter(x => x.conclusao.id !== id)); },
+    async enviar() {
+        let armazem;
+        try { armazem = await dados(); } catch { atualizarIndicadorSync(); return; }
+        for (const { pacienteId, conclusao } of this.pendentes()) {
+            if (this.aEnviar.has(conclusao.id)) continue;
+            this.aEnviar.add(conclusao.id);
+            armazem.registarConclusao(pacienteId, conclusao)
+                .then(() => this.remover(conclusao.id))
+                .catch(e => {
+                    // Recusado pelas regras (ex.: exercício já não atribuído) → não adianta tentar outra vez
+                    if (["permission-denied", "invalid-argument", "not-found"].includes(e?.code)) this.remover(conclusao.id);
+                    else console.warn("Conclusão por enviar:", e);
+                })
+                .finally(() => { this.aEnviar.delete(conclusao.id); atualizarIndicadorSync(); });
+        }
+        atualizarIndicadorSync();
+    }
+};
+window.addEventListener("online", () => Sincronizacao.enviar());
+
+function atualizarIndicadorSync() {
+    const n = Sincronizacao.pendentes().length;
+    const el = $("#pac-sync");
+    el.hidden = n === 0;
+    el.textContent = `⏳ ${n} exercício(s) à espera de internet para serem enviados.`;
+}
+
+// =====================================================================
+//  8d. MODO PACIENTE (a criança entra só com o código)
+// =====================================================================
+const STICKERS = ["😊", "😄", "🥳", "😎", "🤩", "😺", "🐵", "🌟"];
+const paciente = { dados: null, exercicios: [], conclusoes: [] };
+
+// Junta listas de conclusões sem repetir (a mesma conclusão tem sempre o mesmo id)
+function juntarConclusoes(...listas) {
+    const porId = new Map();
+    listas.flat().forEach(c => porId.set(c.id, c));
+    return [...porId.values()].sort((a, b) => a.quando - b.quando);
+}
+const pendentesDe = (pacienteId) =>
+    Sincronizacao.pendentes().filter(x => x.pacienteId === pacienteId).map(x => x.conclusao);
+
+// O intervalo que conta para a barra de progresso: o período atribuído ou, se não houver, esta semana
+const intervaloPaciente = (p) => p.periodo || semana(0);
+const dentroDe = (intervalo, c) => {
+    if (!intervalo) return true;
+    const dia = isoLocal(new Date(c.quando));
+    return dia >= intervalo.inicio && dia <= intervalo.fim;
+};
+
+const limparCodigo = (texto) => normalizar(texto).toUpperCase().replace(/[^A-Z0-9-]/g, "");
+
+async function entrarComCodigo(texto) {
+    const codigo = limparCodigo(texto);
+    const erro = $("#codigo-erro"), botao = $("#btn-codigo");
+    erro.textContent = "";
+    if (!/^[A-Z]+-\d{4}$/.test(codigo)) { erro.textContent = "O código é assim: NOME-1234 🙂"; return false; }
+
+    botao.disabled = true;
+    botao.textContent = "A procurar... 🔍";
+    let resultado, semRede = false;
+    try {
+        const armazem = await comLimite(dados(), 10000);
+        resultado = await comLimite(armazem.obterPacientePorCodigo(codigo), 10000);
+    } catch (e) {
+        // Sem internet: usa a última cópia guardada neste aparelho
+        console.warn(e);
+        resultado = LS.ler(CH.cache(codigo), null);
+        semRede = true;
+        if (!resultado) erro.textContent = "Sem internet, e este código ainda não foi usado neste aparelho. Tenta quando houver ligação.";
+    } finally {
+        botao.disabled = false;
+        botao.textContent = "Entrar! 🍌";
+    }
+
+    if (!resultado) {
+        if (!semRede) {
+            erro.textContent = "Não encontrei esse código. Confirma com o teu terapeuta. 🐒";
+            LS.apagar(CH.cache(codigo));
+        }
+        return false;
+    }
+    LS.gravar(CH.cache(codigo), resultado);
+    LS.gravar(CH.ultimoCodigo, codigo);
+    abrirPaciente(resultado, semRede);
+    return true;
+}
+
+function abrirPaciente({ paciente: p, personalizados }, semRede) {
+    const porId = new Map([...EXERCICIOS_BASE, ...personalizados.map(e => ({ ...e, personalizado: true }))].map(e => [e.id, e]));
+    paciente.dados = p;
+    paciente.exercicios = (p.exercicios || []).map(id => porId.get(id)).filter(Boolean);
+    paciente.conclusoes = juntarConclusoes(LS.ler(CH.conclusoesPaciente(p.id), []), pendentesDe(p.id));
+    $("#pac-ola").textContent = p.nome;
+    $("#pac-offline").hidden = !semRede;
+    renderPaciente();
+    mostrarEcra("ecra-paciente");
+    Sincronizacao.enviar();
+    atualizarConclusoesPaciente();
+}
+
+// Vai buscar à base de dados as conclusões (stickers) já guardadas deste paciente
+async function atualizarConclusoesPaciente() {
+    const pid = paciente.dados.id;
+    try {
+        const armazem = await comLimite(dados(), 10000);
+        const doServidor = await comLimite(armazem.listarConclusoes(pid), 10000);
+        if (paciente.dados?.id !== pid) return;               // entretanto saiu
+        paciente.conclusoes = juntarConclusoes(doServidor, pendentesDe(pid), paciente.conclusoes);
+        LS.gravar(CH.conclusoesPaciente(pid), paciente.conclusoes.slice(-1000));
+        if ($("#ecra-paciente").classList.contains("ativo")) renderPaciente();
+    } catch (e) {
+        console.warn("Sem ligação: a usar os stickers guardados no aparelho.", e);
+    }
+}
+
+function renderPaciente(stickerNovoId = null) {
+    const p = paciente.dados;
+    const lista = paciente.exercicios;
+    const situacao = estadoPeriodo(p.periodo);
+    const intervalo = intervaloPaciente(p);
+    const feitosIds = new Set(paciente.conclusoes.filter(c => dentroDe(intervalo, c)).map(c => c.exercicioId));
+    const feitos = lista.filter(ex => feitosIds.has(ex.id)).length;
+    const quando = p.periodo ? "neste período" : "esta semana";
+
+    let resumo;
+    if (!lista.length) resumo = "Ainda não tens exercícios. O teu terapeuta vai escolhê-los em breve! 🐒";
+    else if (situacao === "futuro") resumo = `Os teus exercícios começam a ${dataBonita(p.periodo.inicio)}! Até lá, descansa. 😊`;
+    else if (situacao === "terminado") resumo = "Estes exercícios já terminaram. Pede ao teu terapeuta exercícios novos! 🐒";
+    else resumo = p.periodo ? `🗓️ ${textoPeriodo(p.periodo)}` : "Vamos fazer ginástica com o Kiko!";
+    $("#pac-resumo").textContent = resumo;
+
+    const podeJogar = lista.length > 0 && situacao === "ativo";
+
+    // Barra de progresso: exercícios diferentes já feitos no período (ou nesta semana)
+    $("#pac-progresso").hidden = !podeJogar;
+    $("#pac-barra").style.width = (lista.length ? (feitos / lista.length) * 100 : 0) + "%";
+    $("#pac-barra-texto").textContent = feitos === lista.length
+        ? `Fizeste todos ${quando}! És um campeão! 🏆`
+        : `Já fizeste ${feitos} de ${lista.length} ${quando}! ⭐`;
+
+    $("#btn-jogar-tudo").hidden = !podeJogar;
+    $("#grelha-crianca").innerHTML = !podeJogar ? "" : lista.map(ex => {
+        const feito = feitosIds.has(ex.id);
+        return `<button class="ex-crianca${feito ? " feito" : ""}" data-acao="jogar-um" data-id="${esc(ex.id)}">
+            ${feito ? `<span class="visto">✅</span>` : ""}
+            <span class="mini">${macacoSVG(ex.expressao)}</span>
+            ${esc(ex.nome)}
+        </button>`;
+    }).join("");
+
+    // Coleção de stickers (os mais recentes primeiro)
+    const total = paciente.conclusoes.length;
+    $("#pac-total-stickers").textContent = total === 0
+        ? "Ainda não tens stickers. Faz um exercício para ganhares o primeiro! 🎁"
+        : total === 1 ? "Já tens 1 sticker! 🎉" : `Já tens ${total} stickers! 🎉`;
+    const nomes = new Map(lista.map(ex => [ex.id, ex.nome]));
+    $("#colecao").innerHTML = [...paciente.conclusoes].reverse().slice(0, 300).map(c => {
+        const titulo = `${nomes.get(c.exercicioId) || "Exercício"} — ${new Date(c.quando).toLocaleDateString("pt-PT")}`;
+        return `<span class="sticker${c.id === stickerNovoId ? " novo" : ""}" title="${esc(titulo)}">${esc(c.sticker || "😊")}</span>`;
+    }).join("");
+    atualizarIndicadorSync();
+}
+
+function jogarComoPaciente(lista) {
+    // Ao voltar, o sticker mais recente aparece na coleção com uma animação
+    const voltar = () => { renderPaciente(paciente.conclusoes.at(-1)?.id); mostrarEcra("ecra-paciente"); };
+    iniciarJogo(lista, {
+        mostrarInstrucao: false,          // a caixa "Terapeuta: ..." fica escondida (há um botão para a mostrar)
+        aoConcluir: registarConclusaoPaciente,
+        aoSair: voltar,
+        aoTerminar: voltar
+    });
+}
+
+function registarConclusaoPaciente(ex, tempo) {
+    const p = paciente.dados;
+    const conclusao = {
+        id: novoId("c"),
+        exercicioId: ex.id,
+        quando: Date.now(),
+        tempo,                                                     // milissegundos ou null
+        sticker: STICKERS[Math.floor(Math.random() * STICKERS.length)]
+    };
+    // Fica já na coleção do aparelho e entra na fila para ser enviado para a base de dados
+    paciente.conclusoes.push(conclusao);
+    LS.gravar(CH.conclusoesPaciente(p.id), paciente.conclusoes.slice(-1000));
+    Sincronizacao.adicionar(p.id, conclusao);
+    return conclusao.sticker;          // o jogo mostra este sticker como prémio
+}
+
+// =====================================================================
+//  9. O JOGO (reutilizado pelo terapeuta e pelo paciente)
+// =====================================================================
+const jogo = {
+    lista: [],
+    indice: -1,                  // -1 = ecrã de boas-vindas
+    opcoes: {},
+    mostrarInstrucao: true,
+    // cronómetro
+    acumulado: 0, inicio: 0, aAndar: false, raf: null
+};
+
+/**
+ * Começa um jogo com uma lista de exercícios.
+ * opcoes.mostrarInstrucao — mostra a caixa "Terapeuta: ..." (pode ser alternada)
+ * opcoes.aoConcluir(ex, tempoMs) — chamado sempre que um exercício é concluído (stickers na Fase 3)
+ * opcoes.aoSair() — chamado ao carregar no ✖
+ * opcoes.aoTerminar() — se existir, o botão do ecrã final chama-o (em vez de "Jogar outra vez")
+ */
+function iniciarJogo(lista, opcoes = {}) {
+    if (!lista.length) { aviso("Não há exercícios para jogar."); return; }
+    jogo.lista = lista;
+    jogo.opcoes = opcoes;
+    jogo.mostrarInstrucao = opcoes.mostrarInstrucao !== false;
+    jogo.indice = -1;
+    $("#premio").classList.remove("mostrar");     // não repetir o prémio do jogo anterior
+    mostrarEcra("ecra-jogo");
+    mostrarSlide({
+        titulo: "",
+        expressao: "neutra",
+        historia: "O nosso amiguinho Macaquinho Kiko está pronto para brincar. Queres fazer ginástica com ele?",
+        instrucao: "(Prepara-te para imitar o macaquinho!)",
+        botao: "Começar! 🍌",
+        cronometro: false,
+        progresso: 0
+    });
+}
+
+function mostrarSlide(s) {
+    zerarCronometro();
+    const story = $("#story"), inst = $("#instruction");
+    story.style.opacity = 0;
+    inst.style.opacity = 0;
+    setTimeout(() => {
+        story.textContent = s.historia;
+        inst.textContent = s.instrucao;
+        story.style.opacity = 1;
+        inst.style.opacity = 1;
+    }, 200);
+    $("#titulo-ex").textContent = s.titulo;
+    $("#action-btn").textContent = s.botao;
+    $("#monkey").innerHTML = macacoSVG(s.expressao);
+    $("#timer-container").style.display = s.cronometro ? "flex" : "none";
+    $("#progress").style.width = s.progresso + "%";
+    atualizarCaixaInstrucao();
+}
+
+function atualizarCaixaInstrucao() {
+    $("#instruction").hidden = !jogo.mostrarInstrucao;
+    $("#btn-instrucao").textContent = jogo.mostrarInstrucao ? "🙈 Esconder instrução do terapeuta" : "👁️ Mostrar instrução do terapeuta";
+}
+
+function avancar() {
+    // Concluir o exercício atual (se houver)
+    if (jogo.indice >= 0 && jogo.indice < jogo.lista.length) {
+        const ex = jogo.lista[jogo.indice];
+        const tempo = ex.cronometro && tempoCronometro() > 0 ? Math.round(tempoCronometro()) : null;
+        const sticker = jogo.opcoes.aoConcluir?.(ex, tempo);
+        if (sticker) mostrarPremio(sticker);
+        animarCelebracao();
+    }
+
+    jogo.indice++;
+    if (jogo.indice > jogo.lista.length) {                     // carregou no botão do ecrã final
+        if (jogo.opcoes.aoTerminar) return jogo.opcoes.aoTerminar();
+        jogo.indice = 0;                                       // "Jogar outra vez"
+    }
+
+    if (jogo.indice < jogo.lista.length) {
+        const ex = jogo.lista[jogo.indice];
+        mostrarSlide({
+            titulo: `${CATEGORIAS[ex.categoria]?.emoji || "⭐"} ${ex.nome}`,
+            expressao: ex.expressao,
+            historia: ex.historia,
+            instrucao: ex.instrucao ? "Terapeuta: " + ex.instrucao : "",
+            botao: ex.botao || "Consegui!",
+            cronometro: ex.cronometro,
+            progresso: ((jogo.indice + 1) / jogo.lista.length) * 100
+        });
+    } else {
+        // Fim: grande festa!
+        mostrarSlide({
+            titulo: "",
+            expressao: "sorrisoDentes",
+            historia: "Parabéns! O Macaquinho adorou brincar contigo! És espetacular! 🎉",
+            instrucao: "Exercícios concluídos com sucesso!",
+            botao: jogo.opcoes.aoTerminar ? "Voltar! 🏠" : "Jogar Outra Vez! 🔄",
+            cronometro: false,
+            progresso: 100
+        });
+        for (let i = 0; i < 15; i++) setTimeout(animarCelebracao, i * 120);
+    }
+}
+
+// ---------- Cronómetro (baseado no relógio real, não perde tempo) ----------
+const tempoCronometro = () => jogo.acumulado + (jogo.aAndar ? performance.now() - jogo.inicio : 0);
+const doisDigitos = (n) => String(n).padStart(2, "0");
+
+function desenharCronometro() {
+    const ms = tempoCronometro();
+    $("#time-display").textContent = doisDigitos(Math.floor(ms / 1000)) + ":" + doisDigitos(Math.floor((ms % 1000) / 10));
+    if (jogo.aAndar) jogo.raf = requestAnimationFrame(desenharCronometro);
+}
+
+function alternarCronometro() {
+    const btn = $("#toggle-btn");
+    if (jogo.aAndar) {
+        jogo.acumulado = tempoCronometro();
+        jogo.aAndar = false;
+        cancelAnimationFrame(jogo.raf);
+        btn.textContent = "▶️ Andar";
+        btn.style.backgroundColor = "#4caf50";
+    } else {
+        jogo.inicio = performance.now();
+        jogo.aAndar = true;
+        btn.textContent = "⏸️ Parar";
+        btn.style.backgroundColor = "#ff9800";
+        desenharCronometro();
+    }
+}
+
+function zerarCronometro() {
+    cancelAnimationFrame(jogo.raf);
+    jogo.aAndar = false;
+    jogo.acumulado = 0;
+    desenharCronometro();
+    const btn = $("#toggle-btn");
+    btn.textContent = "▶️ Andar";
+    btn.style.backgroundColor = "#4caf50";
+}
+
+// ---------- Prémio: o sticker ganho aparece grande no meio do ecrã ----------
+function mostrarPremio(sticker) {
+    const el = $("#premio");
+    $("#premio-sticker").textContent = sticker;
+    el.classList.remove("mostrar");
+    void el.offsetWidth;               // reinicia a animação
+    el.classList.add("mostrar");
+}
+
+// ---------- Festa de emojis a saltar do botão ----------
+function animarCelebracao() {
+    const container = $("#game-container");
+    const btn = $("#action-btn").getBoundingClientRect();
+    const caixa = container.getBoundingClientRect();
+    const emojis = ["🍌", "🐒", "🎉", "⭐", "🎈", "👏"];
+
+    for (let i = 0; i < 5; i++) {
+        const el = document.createElement("div");
+        el.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+        el.classList.add("celebration-element");
+        el.style.left = (btn.left - caixa.left + btn.width / 2) + "px";
+        el.style.top = (btn.top - caixa.top) + "px";
+
+        const angulo = Math.random() * Math.PI + Math.PI;
+        const distancia = 80 + Math.random() * 120;
+        el.style.setProperty("--x", `${Math.cos(angulo) * distancia}px`);
+        el.style.setProperty("--y", `${Math.sin(angulo) * distancia}px`);
+        el.style.setProperty("--r", `${Math.random() * 360 - 180}deg`);
+
+        container.appendChild(el);
+        setTimeout(() => el.remove(), 1200);
+    }
+}
+
+// =====================================================================
+//  10. LIGAR OS BOTÕES (um único "ouvinte" para todos os data-acao)
+// =====================================================================
+const voltarAdmin = () => mostrarEcra("ecra-admin");
+
+const ACOES = {
+    "ir-inicio": () => mostrarEcra("ecra-inicio"),
+    "ir-terapeuta": () => irTerapeuta(),
+    "ir-codigo": () => { mostrarEcra("ecra-codigo"); $("#codigo-input").focus(); },
+    "jogar-demo": () => iniciarJogo(EXERCICIOS_BASE.filter(e => e.original),
+                                    { aoSair: () => mostrarEcra("ecra-inicio") }),
+    "sair": async () => { await (await autenticacao()).sair(); mostrarEcra("ecra-inicio"); aviso("Sessão terminada. Até breve! 👋"); },
+    "recuperar-pass": async () => {
+        const email = $("#login-email").value.trim();
+        if (!email) { $("#login-erro").textContent = "Escreva primeiro o seu email."; return; }
+        await (await autenticacao()).recuperar(email);
+        aviso(`Enviámos um email para ${email} para mudar a palavra-passe. 📧`);
+    },
+
+    // Paciente
+    "jogar-tudo": () => jogarComoPaciente(paciente.exercicios),
+    "jogar-um": (b) => jogarComoPaciente(paciente.exercicios.filter(e => e.id === b.dataset.id)),
+    "sair-paciente": () => {
+        LS.apagar(CH.ultimoCodigo);   // num aparelho partilhado, o próximo tem de escrever o código
+        $("#codigo-input").value = "";
+        mostrarEcra("ecra-inicio");
+    },
+
+    // Atribuição
+    "atribuir": (b) => abrirAtribuicao(estado.pacientes.find(p => p.id === b.dataset.id)),
+    "atr-todos": () => { atribuicao.visiveis.forEach(id => atribuicao.escolhidos.add(id)); renderAtribuicao(); },
+    "atr-nenhum": () => { atribuicao.visiveis.forEach(id => atribuicao.escolhidos.delete(id)); renderAtribuicao(); },
+
+    // Progresso
+    "progresso": (b) => abrirProgresso(estado.pacientes.find(p => p.id === b.dataset.id)),
+    "voltar-admin": () => mostrarEcra("ecra-admin"),
+    "exportar-csv": () => exportarCSV(),
+    "imprimir": () => window.print(),
+
+    "separador": (b) => {
+        $$(".separador").forEach(s => s.classList.toggle("ativo", s === b));
+        $$(".painel").forEach(p => p.classList.toggle("ativo", p.id === b.dataset.painel));
+    },
+    "filtro-cat": (b) => { estado.categoria = b.dataset.cat; renderExercicios(); },
+
+    "experimentar": (b) => iniciarJogo([procurarExercicio(b.dataset.id)], { aoSair: voltarAdmin }),
+    "jogar-lista": () => iniciarJogo(listaFiltrada(), { aoSair: voltarAdmin }),
+    "novo-ex": () => abrirFormExercicio(),
+    "editar-ex": (b) => abrirFormExercicio(procurarExercicio(b.dataset.id)),
+    "duplicar-ex": (b) => abrirFormExercicio(procurarExercicio(b.dataset.id), true),
+    "apagar-ex": async (b) => {
+        const ex = procurarExercicio(b.dataset.id);
+        if (!ex || !await confirmar(`Apagar o exercício «${ex.nome}»?`)) return;
+        await (await dados()).apagarExercicio(ex.id);
+        estado.personalizados = estado.personalizados.filter(e => e.id !== ex.id);
+        renderExercicios();
+        aviso("Exercício apagado.");
+    },
+
+    "novo-pac": () => abrirFormPaciente(),
+    "editar-pac": (b) => abrirFormPaciente(estado.pacientes.find(p => p.id === b.dataset.id)),
+    "apagar-pac": async (b) => {
+        const p = estado.pacientes.find(x => x.id === b.dataset.id);
+        if (!p || !await confirmar(`Apagar ${p.nome} (${p.codigo})? O código deixa de funcionar e o progresso é apagado.`)) return;
+        await (await dados()).apagarPaciente(p);
+        estado.pacientes = estado.pacientes.filter(x => x.id !== p.id);
+        renderPacientes();
+        aviso("Paciente apagado.");
+    },
+    "gerar-codigo": () => {
+        $("#pac-codigo").textContent = gerarCodigo($("#pac-nome").value.trim().split(/\s+/)[0]);
+        $("#pac-aviso-codigo").hidden = !$("#pac-id").value;
+    },
+    "copiar-codigo": async (b) => {
+        try { await navigator.clipboard.writeText(b.dataset.codigo); aviso(`Código ${b.dataset.codigo} copiado! 📋`); }
+        catch { aviso(`Código: ${b.dataset.codigo}`); }
+    },
+    "fechar-dialogo": (b) => b.closest("dialog").close(),
+
+    // Jogo
+    "avancar": () => avancar(),
+    "sair-jogo": () => { zerarCronometro(); (jogo.opcoes.aoSair || (() => mostrarEcra("ecra-inicio")))(); },
+    "alternar-instrucao": () => { jogo.mostrarInstrucao = !jogo.mostrarInstrucao; atualizarCaixaInstrucao(); },
+    "cron-alternar": () => alternarCronometro(),
+    "cron-zero": () => zerarCronometro()
+};
+
+function mostrarErro(e) {
+    console.error(e);
+    aviso("⚠️ " + traduzirErro(e));
+}
+
+document.addEventListener("click", (e) => {
+    const botao = e.target.closest("[data-acao]");
+    if (botao && !botao.disabled && ACOES[botao.dataset.acao]) {
+        Promise.resolve().then(() => ACOES[botao.dataset.acao](botao)).catch(mostrarErro);
+    }
+});
+
+// Liga um formulário a uma função; os erros aparecem dentro do próprio formulário
+function aoSubmeter(seletor, funcao) {
+    const form = $(seletor);
+    form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const erro = form.querySelector(".erro");
+        if (erro) erro.textContent = "";
+        const botao = form.querySelector("[type=submit]");
+        botao.disabled = true;
+        try { await funcao(); }
+        catch (err) { console.error(err); if (erro) erro.textContent = traduzirErro(err); else mostrarErro(err); }
+        finally { botao.disabled = false; }
+    });
+}
+
+$("#pesquisa-ex").addEventListener("input", (e) => { estado.pesquisa = e.target.value; renderExercicios(); });
+$("#ex-expressao").addEventListener("change", atualizarPrevia);
+aoSubmeter("#form-exercicio", guardarFormExercicio);
+aoSubmeter("#form-paciente", guardarFormPaciente);
+aoSubmeter("#form-atribuir", guardarAtribuicao);
+aoSubmeter("#form-codigo", () => entrarComCodigo($("#codigo-input").value));
+
+// Atribuição: período, pesquisa, filtro e caixas de seleção
+$("#atr-periodo").addEventListener("change", atualizarPeriodoUI);
+$("#atr-inicio").addEventListener("change", atualizarPeriodoUI);
+$("#atr-fim").addEventListener("change", atualizarPeriodoUI);
+$("#atr-pesquisa").addEventListener("input", renderAtribuicao);
+$("#atr-categoria").addEventListener("change", renderAtribuicao);
+$("#atr-lista").addEventListener("change", (e) => {
+    if (e.target.type !== "checkbox") return;
+    if (e.target.checked) atribuicao.escolhidos.add(e.target.value);
+    else atribuicao.escolhidos.delete(e.target.value);
+    atualizarContadorAtribuicao();
+});
+
+// Filtro de período do painel de progresso
+$("#prog-filtro").addEventListener("change", atualizarFiltroProgresso);
+$("#prog-inicio").addEventListener("change", renderProgresso);
+$("#prog-fim").addEventListener("change", renderProgresso);
+
+// O código aparece sempre em maiúsculas enquanto se escreve
+$("#codigo-input").addEventListener("input", (e) => { e.target.value = limparCodigo(e.target.value); });
+
+// Num paciente novo, o código acompanha o nome que se escreve
+$("#pac-nome").addEventListener("input", (e) => {
+    if (!$("#pac-id").value) $("#pac-codigo").textContent = gerarCodigo(e.target.value.trim().split(/\s+/)[0]);
+});
+
+aoSubmeter("#form-login", async () => {
+    await (await autenticacao()).entrar($("#login-email").value.trim(), $("#login-pass").value);
+    $("#login-pass").value = "";
+    await abrirAdmin();
+});
+
+// =====================================================================
+//  11. ARRANQUE
+// =====================================================================
+preencherSelects();
+$("#atr-categoria").innerHTML = `<option value="todas">Todas as categorias</option><option value="escolhidos">✅ Só os escolhidos</option>` +
+    Object.entries(CATEGORIAS).map(([k, c]) => `<option value="${k}">${c.emoji} ${c.nome}</option>`).join("");
+$("#macaco-inicio").innerHTML = macacoSVG("sorriso");
+$("#macaco-codigo").innerHTML = macacoSVG("sorrisoDentes");
+$("#login-ajuda").innerHTML = MODO_FIREBASE
+    ? "☁️ Entre com a conta de terapeuta que criou na consola do Firebase."
+    : "<b>Modo local:</b> o Firebase ainda não está configurado. Qualquer email válido e palavra-passe com 6 ou mais caracteres servem para testar, e os dados ficam só neste dispositivo.";
+
+// Se esta criança já entrou neste aparelho, vai direta para os seus exercícios
+const codigoGuardado = LS.ler(CH.ultimoCodigo, null);
+if (codigoGuardado) {
+    $("#codigo-input").value = codigoGuardado;
+    entrarComCodigo(codigoGuardado).catch(console.warn);
+}
+
+// Envia conclusões que tenham ficado por enviar numa visita anterior
+Sincronizacao.enviar().catch(console.warn);
+</script>
+</body>
+</html>

@@ -1,0 +1,67 @@
+rules_version = '2';
+
+// =====================================================================
+//  Regras de segurança do Firestore — O Macaquinho Brincalhão
+//  Copie TUDO isto para: Consola Firebase → Firestore Database → Regras → Publicar
+//
+//  ⚠️ ANTES de publicar, troque e7kmIrPA6yOhMKFDlc4DYMJlGHk1 pelo UID da sua conta
+//     (Authentication → Utilizadores → coluna "UID do utilizador").
+// =====================================================================
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Só a conta do terapeuta (pelo UID) pode ler e escrever tudo
+    function eTerapeuta() {
+      return request.auth != null && request.auth.uid == "e7kmIrPA6yOhMKFDlc4DYMJlGHk1";
+    }
+
+    // Uma conclusão criada pelo paciente tem de ser válida:
+    // só os campos esperados, um exercício que lhe foi atribuído e uma data plausível
+    function conclusaoValida(pacienteId) {
+      let c = request.resource.data;
+      let p = get(/databases/$(database)/documents/pacientes/$(pacienteId)).data;
+      return c.keys().hasOnly(['exercicioId', 'quando', 'tempo', 'sticker'])
+        && c.keys().hasAll(['exercicioId', 'quando'])
+        && c.exercicioId is string
+        && c.exercicioId in p.exercicios
+        && c.quando is timestamp
+        && c.quando < request.time + duration.value(10, 'm')
+        && c.quando > request.time - duration.value(60, 'd')
+        && (!('tempo' in c) || c.tempo == null || (c.tempo is int && c.tempo >= 0 && c.tempo < 3600000))
+        && (!('sticker' in c) || (c.sticker is string && c.sticker.size() <= 8));
+    }
+
+    // Exercícios personalizados: o paciente só consegue abrir um de cada vez (pelo id)
+    match /exercicios/{exercicioId} {
+      allow get: if true;
+      allow list, create, update, delete: if eTerapeuta();
+    }
+
+    // Códigos de entrada: o paciente abre o SEU código, mas não consegue listar os outros
+    match /codigos/{codigo} {
+      allow get: if true;
+      allow list, create, update, delete: if eTerapeuta();
+    }
+
+    // Pacientes: o paciente só chega ao seu documento através do código
+    // (o id do paciente é aleatório); não consegue listar os outros pacientes
+    match /pacientes/{pacienteId} {
+      allow get: if true;
+      allow list, create, update, delete: if eTerapeuta();
+
+      // Conclusões do paciente: ele cria as suas e pode lê-las (coleção de stickers)
+      match /conclusoes/{conclusaoId} {
+        allow read: if true;
+        allow create: if eTerapeuta() || conclusaoValida(pacienteId);
+        // Reenviar exatamente a mesma conclusão (sincronização sem internet) é permitido
+        allow update: if eTerapeuta() || request.resource.data == resource.data;
+        allow delete: if eTerapeuta();
+      }
+    }
+
+    // Para o painel de progresso do terapeuta ler conclusões de todos os pacientes
+    match /{caminho=**}/conclusoes/{conclusaoId} {
+      allow read: if eTerapeuta();
+    }
+  }
+}
